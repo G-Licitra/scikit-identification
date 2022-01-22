@@ -59,3 +59,42 @@ f_out      = ode(x_test,u_test)
 #ut  = t;                                        % time varing parameter
 #u = 0*pi/180 + 0*sin(2*pi*0.5*t);               % angle of attack [rad]
 #u(1) = deg2rad(5);                              % 5 deg i.c.
+
+
+fs = 100 # sample rate
+f  = 1   # the frequency of the signal
+Toss = 4   # observation time
+t    = np.linspace(0, Toss, Toss*fs, endpoint=False)
+# generate a signal with 2 harmonics
+data_time = pd.DataFrame(data={'x_sine': np.sin(2*np.pi*f* t) + 0.5*np.cos(2*np.pi*(10*f)* t)}, index=t)
+
+
+N  = 50;                           # number of samples
+fs = 50;                           # sampling frequency [hz]
+t0, tf = 0, N/fs                   # initial and final time [s]  
+t  = np.linspace(0,(N-1)*(1/fs),N) # time array
+
+
+N_steps_per_sample = 4;   
+dt = 1/fs/N_steps_per_sample;      # integration step for ode
+
+%% build integrator: RK4 ==================================================
+k1 = ode(states          ,controls,theta);
+k2 = ode(states+dt/2.0*k1,controls,theta);
+k3 = ode(states+dt/2.0*k2,controls,theta);
+k4 = ode(states+dt*k3    ,controls,theta);
+xf = states + dt/6.0*(k1+2*k2+2*k3+k4);
+% Create a function that simulates one step propagation in a sample
+one_step = Function('one_step',{states, controls, theta},{xf});
+
+X = states;
+for i=1:N_steps_per_sample
+    X = one_step(X, controls, theta);
+end
+
+% Create a function that simulates all step propagation on a sample
+one_sample = Function('one_sample',{states, controls, theta}, {X});
+% speedup trick: expand into scalar operations
+one_sample = one_sample.expand();
+
+
