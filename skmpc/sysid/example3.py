@@ -7,9 +7,34 @@ from scipy.signal import chirp
 import scipy.sparse as sps
 
 
-############ Create RK4 ##########
-def RK4integrator(ode, N_steps_per_sample=10, fs=601.1):
+def RK4integrator(system, N_steps_per_sample=10, fs=100, N_steps=100):
+    r"""Create Explicit Runge Kutta order 4 integrator`
 
+    Parameters
+    ---------
+    ode : casadi.Function
+        Function which define the model via ODE, formally, f: (x, u, theta) -> rhs. rhs: right-hand side, x: differential states, u: Input, theta: Model Parameters
+    N_steps_per_sample: int
+        Steps forward within one integration step
+    fs: int
+        frequency at which the system is sampled
+    N_steps: int
+        number of integration steps
+
+    Returns
+    ---------
+    one_sample : casadi.Function
+        One step forward model integrator
+    all_sample : casadi.Function
+        N steps forward model integrator
+    
+    """
+    # unpack model
+    x= system['state']
+    u = system['input']
+    theta = system['parameters']
+    ode = system['ode']
+    
     dt = 1/fs/N_steps_per_sample
 
     # Build an integrator for this system: Runge Kutta 4 integrator
@@ -29,14 +54,32 @@ def RK4integrator(ode, N_steps_per_sample=10, fs=601.1):
     # Create a function that simulates all step propagation on a sample
     one_sample = ca.Function('one_sample',[x, u, theta], [X])
 
-    ############ Simulating the system ##########
-    all_samples = one_sample.mapaccum("all_samples", N)
+    # Simulating the system for N steps
+    all_samples = one_sample.mapaccum("all_samples", N_steps)
 
     return one_sample, all_samples
 
 
-############ Create a Gauss-Newton solver ##########
-def gauss_newton(e,nlp,V):
+
+def gauss_newton(e, nlp, V):
+    r"""Gauss-Newton solver`
+
+    Parameters
+    ---------
+    e : casadi
+        cost function
+    nlp: dict
+        Steps forward within one integration step
+    V : casadi  
+        optimization variables
+    
+    Returns
+    ---------
+    solver : casadi
+        nlp solver
+    
+    """
+    
     # Use just-in-time compilation to speed up the evaluation
     if ca.Importer.has_plugin('clang'):
         print('just-in-time compilation with compiler= "clang" ')
@@ -76,8 +119,8 @@ def gauss_newton(e,nlp,V):
 
 ############ SETTINGS #####################
 
-N = 500  # Number of samples
-fs = 50 # Sampling frequency [hz]
+N = 2000  # Number of samples
+fs = 500 # Sampling frequency [hz]
 t  = np.linspace(0,(N-1)*(1/fs),N) # time array
 
 nx, nu, ntheta = 2, 2, 2               # number states, input, and parameter
@@ -102,9 +145,11 @@ rhs = ca.vertcat(u1-ka*x1,
 
 # Form an ode function
 ode = ca.Function('ode',[x,u,theta],[rhs])
+system = {'state':x, 'input': u , 'parameters':theta, 'ode': ode}
 
 # create integrator
-one_sample, all_samples = RK4integrator(ode, N_steps_per_sample=4, fs=fs)
+one_sample, all_samples = RK4integrator(system, N_steps_per_sample=4, fs=fs, N_steps=N)
+
 
 ############ GENERATE GROUND TRUTH #####################
 
@@ -161,10 +206,9 @@ x0 = ca.veccat(param_guess, ca.vec(y_data.T))
 solver = gauss_newton(e,nlp, V)
 sol = solver(x0=x0,lbg=0,ubg=0)
 
-
 theta_est = sol['x'][:ntheta]*scale
 X_est = sol['x'][ntheta:].reshape((N,nx))
-df_est = pd.DataFrame(np.array(X_est).T, t, ["x_est1", "x_est2"])
+df_est = pd.DataFrame(np.array(X_est), t, ["x_est1", "x_est2"])
 
 print(f"theta est = {theta_est}")
 print(f"theta truth = {param_truth}")
