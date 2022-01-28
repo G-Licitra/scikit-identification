@@ -41,7 +41,16 @@ class System:
     # class variable: every instance will inherit this value
     #nationality = "italy" 
 
-    def __init__(self, states, inputs, parameters=None, model_dynamics=None, output=None):
+    def __init__(self, 
+                 states, 
+                 inputs, 
+                 parameters=None, 
+                 model_dynamics=None, 
+                 output=None, 
+                 name_state=None, 
+                 name_input=None, 
+                 name_output=None):
+        
         """Constructor. It runs every instance is created"""
         self.states = states
         self.inputs = inputs
@@ -50,19 +59,28 @@ class System:
         # get dimentions 
         self.nx = states.shape[0] # differential states
         self.nu = inputs.shape[0] # control input
-        self.nparam = ca.mtimes(ca.DM_eye(self.nx),states) if parameters == None else parameters.shape[0] # model parameters
+        self.np = -1 if parameters == None else parameters.shape[0] # model parameters
            
-        self.model_dynamics = model_dynamics 
-        self.output = ca.mtimes(ca.DM_eye(self.nx),states) if output == None else output
-
-        ny = self.output.shape[0] 
+        self.model_dynamics = model_dynamics
+        
+        # if output y(t) is not specified, then set y = x(t) 
+        self.output = states if output == None else output
+        self.ny = self.nx if output == None else output.shape[0] # model parameters  
     
         # Construct Model
         # Form an ode function
-        self.model = ca.Function('model',
-                                 [self.states, self.inputs, self.parameters],
-                                 [self.model_dynamics, self.output],
-                                 ['x(y)','u(t)','theta'], ['xdot(t) = f(x(t),u(t),theta)', 'y(t) = g(x(t))'] )
+        print(self.np) 
+        if self.np == -1:    
+            self.model = ca.Function('model',
+                                    [self.states, self.inputs],
+                                    [self.model_dynamics, self.output],
+                                    ['x(y)','u(t)'], ['xdot(t) = f(x(t),u(t))', 'y(t) = g(x(t))'] )
+        else:
+            self.model = ca.Function('model',
+                                    [self.states, self.inputs, self.parameters],
+                                    [self.model_dynamics, self.output],
+                                    ['x(y)','u(t)','theta'], ['xdot(t) = f(x(t),u(t),theta)', 'y(t) = g(x(t))'] )
+        
     
     def print_dimensions(self):
         self.model.print_dimensions()
@@ -129,4 +147,3 @@ theta_test = [0.1,0.5]
 rhs_num, y_num  = sys.evaluate(x_test,u_test,theta_test)
 
 print(f"rhs = {rhs_num}, \ny = {y_num}")
-# %%
