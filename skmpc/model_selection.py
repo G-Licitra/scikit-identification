@@ -1,6 +1,25 @@
 #%%
 import pandas as pd
 import casadi as ca
+from typing import Union, Any
+
+def generate_model_parameters(nx:int, nu:int, nparam:Union[str, None] = None):
+    """Generate casADi symbol parameters.
+
+    Args:
+        nx (int): The dimension of the differential state vector
+        nu (int): The dimension of the control input vector
+        nparam (Union[str, None], optional): parameter. The dimension of the parameter vector. Defaults to None.
+
+    Returns:
+        (x, u, param): the state, control input and parameter vector, respectively.
+    """
+    x = ca.MX.sym("x", nx)
+    u = ca.MX.sym("u", nu)
+    param = None if nparam == None else ca.MX.sym("param", nparam) # model parameters
+    return (x, u, param)
+
+#%%
 
 
 class System:
@@ -61,10 +80,10 @@ class System:
         self.nu = inputs.shape[0] # control input
         self.np = -1 if parameters == None else parameters.shape[0] # model parameters
            
-        self.model_dynamics = model_dynamics
+        self.model_dynamics = ca.vcat(model_dynamics)
         
         # if output y(t) is not specified, then set y = x(t) 
-        self.output = states if output == None else output
+        self.output = states if output == None else ca.vcat(output)
         self.ny = self.nx if output == None else output.shape[0] # model parameters  
     
         # Construct Model
@@ -81,6 +100,9 @@ class System:
                                     [self.model_dynamics, self.output],
                                     ['x(y)','u(t)','theta'], ['xdot(t) = f(x(t),u(t),theta)', 'y(t) = g(x(t))'] )
         
+    def _validate_params(self):
+        """Validate input params."""
+        return None
     
     def print_dimensions(self):
         self.model.print_dimensions()
@@ -96,45 +118,32 @@ class System:
         return (rhs_num, y_num)
           
     def __repr__(self):
-        """"
-        If you don't overload __str__ when running:
-        >>> print(sue) # will show something like
-        <__main__.Person object at 0x7fa3288ed9d0> 
-        __repr__ and __str__ are run automatically everytime an instance is converted to its print string.
-        o __str__ are used for more user friedly info
-        o __repr__ is used to provide extra details to developers
+        f"""
+        Dynamic Model with:
+        - states:{self.nx} = [x1, x2]
+        - inputs:{self.nu} = [u1, u2]
+        - parameter:{self.parameters} = [p1,p2]  
         """
+        
         return "self.model.print_dimensions()"  # string to print
 
 
 #%%
 #if __name__ == "__main__":  # when run for testing only
 
-x = ca.MX.sym("x", 2)
-u = ca.MX.sym("u", 2)
-param = ca.MX.sym("theta", 2)
-    
+(x,u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+
+# assign specific name
 x1, x2 = x[0], x[1]
 u1, u2 = u[0], u[1]
 ka, kb = param[0], param[1]
 
 # xdot = f(x,u,p) <==> rhs = f(x,u,p)
+rhs = [u1-ka*x1, 
+       u1*u2/x1-u1*x2/x1-kb*x2]
 
-rhs = ca.vertcat(u1-ka*x1, 
-                u1*u2/x1-u1*x2/x1-kb*x2)
-
+#%%
 sys = System(states=x, inputs=u, parameters=param, model_dynamics=rhs)
-
-# show special class attribute
-#print(sys.__class__)                # Show bob's class and his name
-#print(sys.__class__.__bases__)
-
-# show attribute (the one defined in __init__)
-#for key in sys.__dict__:
-#    print(key, "=>", sys.__dict__[key]) # 1st way
-#    print(key, "=>", getattr(sys, key))  # 2nd way useful to catch exception
-# %%
-
 sys.print_dimensions()
 
 # %%
@@ -146,4 +155,12 @@ u_test     = [0.2,-0.1]
 theta_test = [0.1,0.5]
 rhs_num, y_num  = sys.evaluate(x_test,u_test,theta_test)
 
-print(f"rhs = {rhs_num}, \ny = {y_num}")
+print(f"rhs = {rhs_num}, \ny = {y_num}") 
+
+# rhs = [0.19, 0.05], 
+# y = [0.1, -0.1]
+
+
+# %%
+
+# %%
