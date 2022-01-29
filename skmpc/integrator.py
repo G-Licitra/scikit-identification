@@ -75,13 +75,23 @@ class RungeKutta4:
 
     def simulate(self, x0, input, param=None):
 
-            # derive N_steps
+            # derive N_steps. 
             N_steps = len(input)
+            
+            # get time and attach one extra sample to time
+            time = input.index           
+            ts = time[-1] + (time[1]-time[0]) # sample time
+            time = np.concatenate([time.values.reshape(-1,1), np.array(ts, ndmin=2)])
             
             # Propagate simulation for N steps and generate trajectory
             all_samples = self.one_sample.mapaccum("all_samples", N_steps)
-            x_sim =  np.array(all_samples(x0, input.values.T, ca.repmat(param, 1, N))).T
-            df_sim = pd.DataFrame(data=x_sim)             
+            x_sim =  np.array(all_samples(x0, input.values.T, ca.repmat(param, 1, N_steps)))
+            
+            # attach the initial condition to x_sim
+            x_sim = np.concatenate([np.array(x0).reshape(1,-1), x_sim.T])
+            
+            df_sim = pd.DataFrame(data=x_sim, index=time.reshape(-1))  
+                       
             return df_sim
 
 
@@ -104,7 +114,7 @@ df_input = pd.DataFrame(data={'u1': 2*chirp(t, f0=1, f1=10, t1=5, method='logari
                               },
                         index = t)
 
-x0       = ca.DM([1,-1])    # Initial Condition x0 = [0;0]; [nx = 2]
+x0       = [1,-1]    # Initial Condition x0 = [0;0]; [nx = 2]
 
 #%%----------------------------------------------------------------
 
@@ -115,19 +125,21 @@ x1, x2 = x[0], x[1]
 u1, u2 = u[0], u[1]
 ka, kb = param[0], param[1]
 
-param_truth = ca.DM([0.1, 0.5])
+param_truth = [0.1, 0.5] # ca.DM([0.1, 0.5])
 
 # xdot = f(x,u,p) <==> rhs = f(x,u,p)
 rhs = [u1-ka*x1, 
-    u1*u2/x1-u1*x2/x1-kb*x2]
+       u1*u2/x1-u1*x2/x1-kb*x2]
 
 sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 
 #%%
 rk4 = RungeKutta4(model=sys, fs=fs)
 
-
 #%%
 xsim = rk4.simulate(x0=x0, input=df_input, param=param_truth)
+
+# %%
+xsim.plot()
 
 # %%
