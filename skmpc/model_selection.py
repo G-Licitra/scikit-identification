@@ -11,7 +11,7 @@ def generate_model_parameters(nx:int, nu:int, nparam:Union[str, None] = None):
         nparam (Union[str, None], optional): parameter. The dimension of the parameter vector. Defaults to None.
 
     Returns:
-        (x, u, param): the state, control input and parameter vector, respectively.
+        (x, u, param): the symbolic state, control input and parameter vector, respectively.
     """
     x = ca.MX.sym("x", nx)
     u = ca.MX.sym("u", nu)
@@ -102,7 +102,7 @@ class DynamicModel:
         return None
     
     def print_dimensions(self):
-        self.model.print_dimensions()
+        self.Fmodel.print_dimensions()
         
     def print_ode(self):
         print(self.model_dynamics)
@@ -112,7 +112,7 @@ class DynamicModel:
 
     def evaluate(self, x0, u0, param):
         # TODO: add case with not param
-        (rhs_num, y_num) = self.model(x0, u0, param)    
+        (rhs_num, y_num) = self.Fmodel(x0, u0, param)    
         return (rhs_num, y_num)
           
     def __repr__(self):

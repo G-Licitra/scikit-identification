@@ -9,7 +9,13 @@ class RungeKutta4:
     Parameters
     ---------
     ode : casadi.Function
-        Function which define the model via ODE, formally, f: (x, u, theta) -> rhs. rhs: right-hand side, x: differential states, u: Input, theta: Model Parameters
+        Function which define the model via ODE, formally, 
+        f: (x, u, theta) -> rhs. 
+        where
+        rhs: right-hand side, 
+        x: differential states, 
+        u: input, 
+        theta: model Parameters
     N_steps_per_sample: int
         Steps forward within one integration step
     fs: int
