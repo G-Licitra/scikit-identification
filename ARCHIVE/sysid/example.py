@@ -2,7 +2,7 @@
 # Model: Chemical Reactor
 #      xdot1 = u1 - k1*x1
 #      xdot2 = u1*u2/x1 - u1*x2/x1 - k2*x2
-# x = [x1;x2] | u = [u1;u2] | p = [ka;kb]    
+# x = [x1;x2] | u = [u1;u2] | p = [ka;kb]
 # This example uses more advanced constructs than the vdp* examples:
 # Since the number of control intervals is potentially very large here,
 # we use memory-efficient Map and MapAccum, in combination with
@@ -27,7 +27,7 @@ N  = 100                           # Number of samples
 fs = 50                            # Sampling frequency [hz]
 t  = np.linspace(0,(N-1)*(1/fs),N) # time array
 
-N_steps_per_sample = 4   
+N_steps_per_sample = 4
 dt = 1/fs/N_steps_per_sample       # integration step for ode
 nx, nu, ntheta = 2, 2, 2               # number states, input, and parameter
 
@@ -46,9 +46,9 @@ ka = p[0]
 kb = p[1]
 
 # xdot = f(x,u,p) <==> rhs = f(x,u,p)
-rhs = ca.vertcat(u[0] - ka*x[0], 
+rhs = ca.vertcat(u[0] - ka*x[0],
                  u[0]*u[1]/x[0] - u[0] * x[1]/x[0]  -kb*x[1]) # xdot = f(x,u,p)
-       
+
 # Form an ode function
 ode = ca.Function('ode', [x, u, p], [rhs])
 
@@ -88,18 +88,18 @@ all_samples = one_sample.mapaccum('all_samples', N)
 # Choose an excitation signal %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% experiment 1
 u_data1  = 1 * np.random.randn(N,1)  #2 * np.random.randn(N,1) #2*chirp(t,1,10,5,'logarithmic') # Choose signal excitation [chirp]
 u_data2  = 2 * np.random.randn(N,1)          # Choose signal excitation [random noise]
-Udata    = np.concatenate((u_data1, u_data2), axis=1)              
+Udata    = np.concatenate((u_data1, u_data2), axis=1)
 x0       = np.array([1,-1], ndmin = nx)                          # Initial Condition x0 = [0;0]; [nx = 2]
 
 # perform forward simulation
 X_truth = all_samples(x0, np.transpose(Udata), ca.repmat(theta_truth, 1, N))
 X_truth = np.concatenate((x0.T, X_truth) ,axis=1) # add the initial condition
-X_truth = np.delete(X_truth, N, axis=1) # remove the last sample to keep 500 
+X_truth = np.delete(X_truth, N, axis=1) # remove the last sample to keep 500
 
 # Add gaussian noise to states
-ny = 0.04*np.random.randn(nx, N)                       
+ny = 0.04*np.random.randn(nx, N)
 # sum noise measurements to the state
-y_data = X_truth + ny 
+y_data = X_truth + ny
 
 df_x = pd.DataFrame(X_truth.T, t, ["x1", "x2"])
 df_y = pd.DataFrame(y_data.T, t, ["y1", "y2"])
@@ -108,7 +108,7 @@ fig, ax = plt.subplots()
 sns.scatterplot(data=df_y, ax=ax)
 sns.lineplot(data=df_x, ax=ax)
 
-# Set Identification Algorithm =========================================== 
+# Set Identification Algorithm ===========================================
 print('Multiple shooting Approach')
 
 

@@ -3,24 +3,17 @@
 # import pandas as pd
 # import pytest
 # import seaborn as sns
-
 # from neuropy.correlation import correlation_analysis
-
-
 # @pytest.fixture()
 # def df_random_small():
 #     np.random.seed(2)
 #     data = pd.DataFrame(data=np.random.rand(15, 3), columns=["a", "b", "c"])
 #     return data
-
-
 # @pytest.fixture()
 # def df_random_large():
 #     np.random.seed(150)
 #     data = pd.DataFrame(data=np.random.rand(2000, 3), columns=["a", "b", "c"])
 #     return data
-
-
 # @pytest.fixture()
 # def df_steady():
 #     data = pd.DataFrame(
@@ -31,8 +24,6 @@
 #         }
 #     )
 #     return data
-
-
 # @pytest.fixture()
 # def df_with_missings():
 #     data = pd.DataFrame(
@@ -46,14 +37,10 @@
 #     data.iloc[0, 2] = np.nan
 #     data.iloc[1, 3] = np.nan
 #     return data
-
-
 # @pytest.fixture()
 # def df_with_nonnormal():
 #     data = sns.load_dataset("iris")
 #     return data
-
-
 # @pytest.fixture()
 # def df_permutation():
 #     """Data from http://biol09.biol.umontreal.ca/PLcourses/Statistical_tests.pdf"""
@@ -64,11 +51,8 @@
 #         }
 #     )
 #     return data
-
-
 # class TestCorrelationAnalysis:
 #     """Test class for function correlation_analysis."""
-
 #     def test_original_df_not_changed(self, df_steady):
 #         """Test whether the dataframe stays the same after applying the function"""
 #         df_prior = df_steady.copy()
@@ -76,7 +60,6 @@
 #             df_steady, permutation_test=False, plot_permutation=False
 #         )
 #         assert df_prior.equals(df_steady)
-
 #     def test_returned_types(self, df_random_small):
 #         """Test whether correct object types are returned"""
 #         mydict, myfig = correlation_analysis(
@@ -84,28 +67,23 @@
 #         )
 #         assert isinstance(mydict, dict)
 #         assert not myfig
-
 #         mydict, myfig = correlation_analysis(
 #             df_random_small, permutation_test=True, plot_permutation=True
 #         )
 #         assert isinstance(mydict, dict)
 #         assert isinstance(myfig, matplotlib.figure.Figure)
-
 #         assert len(mydict) == 5
 #         for key, value in mydict.items():
 #             assert key in ["info", "r-value", "p-value", "N", "summary"]
 #             assert isinstance(value, pd.DataFrame)
-
 #         assert "permutation-p-value" in mydict["summary"].columns
 #         matplotlib.pyplot.close("all")
-
 #     def test_summary_matches_other_dfs(self, df_random_small):
 #         """Test whether the summary has the same results as the separate dataframes"""
 #         results, _ = correlation_analysis(
 #             df_random_small, permutation_test=False, plot_permutation=False
 #         )
 #         for _, row in results["summary"].iterrows():
-
 #             possible_locations_r = [
 #                 results["r-value"].loc[row.feature1, row.feature2],
 #                 results["r-value"].loc[row.feature2, row.feature1],
@@ -121,7 +99,6 @@
 #             assert row["r-value"] in possible_locations_r
 #             assert row["p-value"] in possible_locations_p
 #             assert row["N"] in possible_locations_n
-
 #     def test_random_no_correlation(self, df_random_large):
 #         """Test whether a random selection of number returns very low correlation numbers"""
 #         results, _ = correlation_analysis(
@@ -135,7 +112,6 @@
 #                 for permutation_p_value in results["summary"]["permutation-p-value"]
 #             ]
 #         )
-
 #     def test_steady_correlation(self, df_steady):
 #         """Test whether increasing and decreasing series get coefficient 1 or -1"""
 #         # pearson
@@ -147,7 +123,6 @@
 #         assert all(
 #             [abs(r) == pytest.approx(1.0) for r in results["summary"]["r-value"]]
 #         )
-
 #         # spearman
 #         results, _ = correlation_analysis(
 #             df_steady, permutation_test=False, plot_permutation=False, method="spearman"
@@ -157,7 +132,6 @@
 #         assert all(
 #             [abs(r) == pytest.approx(1.0) for r in results["summary"]["r-value"]]
 #         )
-
 #         # kendall
 #         results, _ = correlation_analysis(
 #             df_steady, permutation_test=False, plot_permutation=False, method="kendall"
@@ -167,7 +141,6 @@
 #         assert all(
 #             [abs(r) == pytest.approx(1.0) for r in results["summary"]["r-value"]]
 #         )
-
 #     def test_missings_pairwise(self, df_with_missings):
 #         """Test whether missingness is handled correctly (with setting pairwise)"""
 #         number_of_notnans = df_with_missings.notna().sum()
@@ -178,10 +151,8 @@
 #             dropna="pairwise",
 #         )
 #         summary = results["summary"]
-
 #         # summary has valid numbers
 #         assert summary.notna().all(axis=None)
-
 #         # 'a' does not have missings, so N is equal to the number of valid values in feature 2
 #         assert (
 #             summary.loc[summary.feature1 == "a"]
@@ -200,12 +171,10 @@
 #             .set_index("feature2")["N"]
 #             .equals(number_of_notnans[["d"]] - 1)
 #         )
-
 #         # check results
 #         assert all(summary["stat-sign"])
 #         assert all([p < 0.001 for p in summary["p-value"]])
 #         assert all([abs(r) == pytest.approx(1.0) for r in summary["r-value"]])
-
 #     def test_missings_listwise(self, df_with_missings):
 #         """Test whether missingness is handled correctly (with setting listwise)"""
 #         number_of_notnans = df_with_missings.notna().all(axis=1).sum()
@@ -216,18 +185,14 @@
 #             dropna="listwise",
 #         )
 #         summary = results["summary"]
-
 #         # summary has valid numbers
 #         assert summary.notna().all(axis=None)
-
 #         # same N in all correlations
 #         assert all(summary["N"] == number_of_notnans)
-
 #         # check results
 #         assert all(summary["stat-sign"])
 #         assert all([p < 0.001 for p in summary["p-value"]])
 #         assert all([abs(r) == pytest.approx(1.0) for r in summary["r-value"]])
-
 #     def test_row_col_list(self, df_with_nonnormal):
 #         """Test whether correct features are selected when passing row_list and col_list"""
 #         results, _ = correlation_analysis(
@@ -245,7 +210,6 @@
 #             "sepal_length",
 #             "sepal_width",
 #         ]
-
 #     def test_norm_check(self, df_with_nonnormal):
 #         """Test whether Pearson and Spearman correlation analyses are selected when passing check_norm"""
 #         results, _ = correlation_analysis(
@@ -258,7 +222,6 @@
 #             results["summary"]["analysis"].values.tolist()
 #             == ["Pearson"] + ["Spearman Rank"] * 5
 #         )
-
 #     def test_random_seed_permutations(self, df_random_small):
 #         """Test whether passing a seed for the randomization of permutations makes sure it is replicable"""
 #         result_1, _ = correlation_analysis(
@@ -275,7 +238,6 @@
 #         )
 #         # same seed, same results
 #         assert result_1["summary"].equals(result_2["summary"])
-
 #         result_3, _ = correlation_analysis(
 #             df_random_small,
 #             permutation_test=True,
@@ -284,7 +246,6 @@
 #         )
 #         # different seed, different results
 #         assert not result_1["summary"].equals(result_3["summary"])
-
 #     def test_correlation_with_permutation(self, df_permutation):
 #         """Test whether correlation values and permutation values are correct"""
 #         # check with http://biol09.biol.umontreal.ca/PLcourses/Statistical_tests.pdf

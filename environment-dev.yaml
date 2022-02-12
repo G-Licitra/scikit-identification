@@ -11,5 +11,6 @@ dependencies:
   - pytest-benchmark=3.4.1=pyhd8ed1ab_0
   - python=3.9.7=h88f2d9e_1
   - seaborn=0.11.2=pyhd3eb1b0_0
+  - outdated=0.2.1=pyhd8ed1ab_0
   - pip:
     - casadi==3.5.5.post2
