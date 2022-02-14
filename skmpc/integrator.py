@@ -1,6 +1,7 @@
 #%%
 import casadi as ca
-from model_selection import DynamicModel
+
+from skmpc.models import DynamicModel
 
 
 class RungeKutta4:
@@ -9,12 +10,12 @@ class RungeKutta4:
     Parameters
     ---------
     ode : casadi.Function
-        Function which define the model via ODE, formally, 
-        f: (x, u, theta) -> rhs. 
+        Function which define the model via ODE, formally,
+        f: (x, u, theta) -> rhs.
         where
-        rhs: right-hand side, 
-        x: differential states, 
-        u: input, 
+        rhs: right-hand side,
+        x: differential states,
+        u: input,
         theta: model Parameters
     N_steps_per_sample: int
         Steps forward within one integration step
@@ -108,7 +109,7 @@ class RungeKutta4:
 import numpy as np
 import pandas as pd
 from scipy.signal import chirp
-from model_selection import generate_model_parameters, DynamicModel
+from skmpc.models import generate_model_parameters, DynamicModel
 import seaborn as sns
 
 # Choose an excitation signal
