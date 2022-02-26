@@ -1,4 +1,4 @@
-name: sksid-env
+name: skmid-env
 channels:
   - defaults
   - /Users/giovanni/opt/anaconda3/conda-bld/osx-64/

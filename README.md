@@ -1,2 +1,2 @@
-# scikit-sysid
-System Idenification Toolkit
+# scikit-mid
+Model Identification Toolkit
