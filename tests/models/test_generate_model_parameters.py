@@ -2,7 +2,7 @@ import casadi as ca
 import pandas as pd
 import pytest
 
-from skmpc.models import generate_model_parameters
+from skmid.models import generate_model_parameters
 
 
 class TestGenerateModelParameters:

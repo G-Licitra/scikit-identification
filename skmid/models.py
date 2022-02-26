@@ -23,7 +23,8 @@ def generate_model_parameters(nx: int, nu: int, nparam: Union[str, None] = None)
 
 
 class DynamicModel:
-    """Casadi Class System
+    r"""
+    Casadi Class System
     Formulation:
     \dot(x(t)) = f(x(x), u(t), \theta)
     y(t) = g(f(x))
