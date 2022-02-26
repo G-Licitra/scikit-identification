@@ -1,2 +1,2 @@
-# scikit-mpc
-Model Predictive Control Toolkit
+# scikit-sysid
+System Idenification Toolkit

@@ -1,0 +1,22 @@
+name: sksid-env
+channels:
+  - defaults
+  - /Users/giovanni/opt/anaconda3/conda-bld/osx-64/
+  - conda-forge
+  - anaconda
+dependencies:
+  - coverage=6.3.2=py39hca72f7f_0
+  - pandas=1.4.1=py39he9d5cce_0
+  - pip=21.2.4=py39hecd8cb5_0
+  - pre-commit=2.17.0=py39h6e9494a_0
+  - pytest=6.2.5=py39hecd8cb5_2
+  - pytest-benchmark=3.4.1=py39hecd8cb5_0
+  - pytest-cov=3.0.0=pyhd3eb1b0_0
+  - pytest-instafail=0.4.1=py_0
+  - pytest-mock=3.6.1=pyhd3eb1b0_0
+  - pytest-sugar=0.9.4=pyh9f0ad1d_1
+  - python=3.9.7=h88f2d9e_1
+  - seaborn=0.11.2=pyhd3eb1b0_0
+  - pip:
+    - casadi==3.5.5.post2
+prefix: /Users/giovanni/opt/anaconda3/envs/skmpc-env
