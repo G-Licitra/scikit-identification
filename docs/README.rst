@@ -1,5 +1,4 @@
-Lumache
+Scikit Identification
 =======
 
-**Lumache** (/lu'make/) is a Python library for cooks and food lovers that
-creates recipes mixing random ingredients.
+**Scikit Identification** is a Python library for training dynamical models modelled as Ordinary Differential Equations (ODEs) with APIs similar to scikit-learn.
