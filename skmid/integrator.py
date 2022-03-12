@@ -1,6 +1,5 @@
 #%%
 import casadi as ca
-
 from skmpc.models import DynamicModel
 
 
