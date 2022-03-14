@@ -5,8 +5,10 @@ import casadi as ca
 import pandas as pd
 
 
-def generate_model_parameters(nx: int, nu: int, nparam: Union[str, None] = None):
-    """Generate casADi symbol parameters.
+def generate_model_parameters(
+    nx: int, nu: Union[int, None] = None, nparam: Union[int, None] = None
+):
+    r"""Generate casADi symbol parameters.
 
     Args:
         nx (int): The dimension of the differential state vector
@@ -16,9 +18,14 @@ def generate_model_parameters(nx: int, nu: int, nparam: Union[str, None] = None)
     Returns:
         (x, u, param): the symbolic state, control input and parameter vector, respectively.
     """
-    x = ca.MX.sym("x", nx)
-    u = ca.MX.sym("u", nu)
-    param = None if nparam == None else ca.MX.sym("param", nparam)  # model parameters
+
+    if nx == 0:
+        raise ValueError("nx must be >= 1")
+    else:
+        x = ca.MX.sym("x", nx)
+
+    u = None if (nu == None) or (nu == 0) else ca.MX.sym("u", nu)
+    param = None if (nparam == None) or (nparam == 0) else ca.MX.sym("param", nparam)
     return (x, u, param)
 
 
