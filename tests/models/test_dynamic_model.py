@@ -26,3 +26,52 @@ class TestDynamicModel:
         model.print_summary()
 
         assert True
+
+    def test_check_input_consistency(self):
+        """Test whether error are raised when inputs are inconsistent."""
+
+        (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+
+        # assign specific name
+        x1, x2 = x[0], x[1]
+        u1, u2 = u[0], u[1]
+        ka, kb = param[0], param[1]
+
+        # xdot = f(x,u,p) <==> rhs = f(x,u,p)
+        rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
+
+        # Case states and model_dynamics do not have the same dimension
+        with pytest.raises(ValueError):
+            model = DynamicModel(states=x1, inputs=u, param=param, model_dynamics=rhs)
+
+        # Case state and state_name do not have the same dimension
+        with pytest.raises(ValueError):
+            model = DynamicModel(
+                states=x,
+                inputs=u,
+                param=param,
+                model_dynamics=rhs,
+                state_name=["a", "b", "c"],
+            )
+
+        # Case input and input_name do not have the same dimension
+        with pytest.raises(ValueError):
+            model = DynamicModel(
+                states=x, inputs=u, param=param, model_dynamics=rhs, input_name=["a"]
+            )
+
+        # Case param and param_name do not have the same dimension
+        with pytest.raises(ValueError):
+            model = DynamicModel(
+                states=x,
+                inputs=u,
+                param=param,
+                model_dynamics=rhs,
+                param_name=["p1", "p2", "p3"],
+            )
+
+        # Case output and output_name do not have the same dimension
+        with pytest.raises(ValueError):
+            model = DynamicModel(
+                states=x, inputs=u, param=param, model_dynamics=rhs, output_name=["y1"]
+            )

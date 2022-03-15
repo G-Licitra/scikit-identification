@@ -20,7 +20,7 @@ def generate_model_parameters(
 
     Examples
     ----------
-    >>> from skmid.correlation import generate_model_parameters
+    >>> from skmid.models import generate_model_parameters
     >>> (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
     """
 
@@ -75,10 +75,10 @@ class DynamicModel:
 
     def __init__(
         self,
-        states,
+        states=list,
         inputs=None,
         param=None,
-        model_dynamics=None,
+        model_dynamics=list,
         output=None,
         state_name=None,
         input_name=None,
@@ -99,7 +99,7 @@ class DynamicModel:
         self.np = None if param == None else param.shape[0]  # model parameters
         self.ny = self.nx if output == None else output.shape[0]  # model parameters
 
-        # assign names
+        # assign names, if specified
         self.state_name = (
             ["x" + str(i + 1) for i in range(self.nx)]
             if state_name is None
@@ -121,7 +121,7 @@ class DynamicModel:
             else output_name
         )
 
-        # TODO: add check size between name and size input
+        self.__check_input_consistency()
 
         # Construct Symbolic Function RHS
 
@@ -163,6 +163,34 @@ class DynamicModel:
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
 
+    def __check_input_consistency(self):
+        """Check if Input class are consistent"""
+        if self.nx != self.model_dynamics.size()[0]:
+            raise ValueError(
+                "Input class is not consistent. states and model_dynamics must have the same dimension."
+            )
+        elif self.nx != len(self.state_name):
+            raise ValueError(
+                "Input class is not consistent. state and state_name must have the same dimension."
+            )
+        elif self.nu != len(self.input_name):
+            raise ValueError(
+                "Input class is not consistent. state and state_name must have the same dimension."
+            )
+        elif self.np != len(self.param_name):
+            raise ValueError(
+                "Input class is not consistent. param and param_name must have the same dimension."
+            )
+        elif self.ny != len(self.output_name):
+            raise ValueError(
+                "Input class is not consistent. output and output_name must have the same dimension."
+            )
+
+    def evaluate(self, x0, u, param):
+        # TODO: add case with not param
+        (rhs_num, y_num) = self.Fmodel(x0, u0, param)
+        return (rhs_num, y_num)
+
     def _validate_params(self):
         """Validate input params."""
         return None
@@ -173,19 +201,7 @@ class DynamicModel:
     def print_output(self):
         print(self.output)
 
-    def evaluate(self, x0, u0, param):
-        # TODO: add case with not param
-        (rhs_num, y_num) = self.Fmodel(x0, u0, param)
-        return (rhs_num, y_num)
-
     def __repr__(self):
-        f"""
-        Dynamic Model with:
-        - states:{self.nx} = [x1, x2]
-        - inputs:{self.nu} = [u1, u2]
-        - parameter:{self.param} = [p1,p2]
-        """
-
         return self.model.print_dimensions()  # string to print
 
 
@@ -203,8 +219,9 @@ if __name__ == "__main__":  # when run for testing only
 
     #%%
     sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
-    sys.print_dimensions()
-    sys.print_ode()
+
+    # sys.print_dimensions()
+    # sys.print_ode()
 
     # numerical evaluation ===================================================
     x_test = [0.1, -0.1]
