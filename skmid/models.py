@@ -17,6 +17,11 @@ def generate_model_parameters(
 
     Returns:
         (x, u, param): the symbolic state, control input and parameter vector, respectively.
+
+    Examples
+    ----------
+    >>> from skmid.correlation import generate_model_parameters
+    >>> (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
     """
 
     if nx == 0:
