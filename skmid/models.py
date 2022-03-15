@@ -76,35 +76,57 @@ class DynamicModel:
     def __init__(
         self,
         states,
-        inputs,
+        inputs=None,
         param=None,
         model_dynamics=None,
         output=None,
-        name_state=None,
-        name_input=None,
-        name_output=None,
+        state_name=None,
+        input_name=None,
+        param_name=None,
+        output_name=None,
     ):
 
-        """Constructor. It runs every instance is created"""
         self.states = states
         self.inputs = inputs
         self.param = param
+        self.model_dynamics = ca.vcat(model_dynamics)
+        # if output y(t) is not specified, then set y = x(t)
+        self.output = states if output == None else ca.vcat(output)
 
         # get dimentions
         self.nx = states.shape[0]  # differential states
-        self.nu = inputs.shape[0]  # control input
+        self.nu = None if input == None else inputs.shape[0]  # control input
         self.np = None if param == None else param.shape[0]  # model parameters
-
-        self.model_dynamics = ca.vcat(model_dynamics)
-
-        # if output y(t) is not specified, then set y = x(t)
-        self.output = states if output == None else ca.vcat(output)
         self.ny = self.nx if output == None else output.shape[0]  # model parameters
 
-        # Construct Model
+        # assign names
+        self.state_name = (
+            ["x" + str(i + 1) for i in range(self.nx)]
+            if state_name is None
+            else state_name
+        )
+        self.input_name = (
+            ["u" + str(i + 1) for i in range(self.nu)]
+            if input_name is None
+            else input_name
+        )
+        self.param_name = (
+            ["p" + str(i + 1) for i in range(self.np)]
+            if param_name is None
+            else param_name
+        )
+        self.output_name = (
+            ["y" + str(i + 1) for i in range(self.ny)]
+            if output_name is None
+            else output_name
+        )
+
+        # TODO: add check size between name and size input
+
+        # Construct Symbolic Function RHS
+
         # Form an ode function
-        print(self.np)
-        if self.np == None:
+        if self.np == None:  # CASE parameters are not specified
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.inputs],
@@ -112,21 +134,38 @@ class DynamicModel:
                 ["x(y)", "u(t)"],
                 ["xdot(t) = f(x(t),u(t))", "y(t) = g(x(t))"],
             )
-        else:
+        elif (
+            self.np == None and self.nu == None
+        ):  # CASE parameters AND input are not specified
+            self.Fmodel = ca.Function(
+                "model",
+                [self.states],
+                [self.model_dynamics, self.output],
+                ["x(y)"],
+                ["xdot(t) = f(x(t))", "y(t) = g(x(t))"],
+            )
+        else:  # CASE states, input and parameters are specified
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.inputs, self.param],
                 [self.model_dynamics, self.output],
-                ["x(y)", "u(t)", "theta"],
-                ["xdot(t) = f(x(t),u(t),theta)", "y(t) = g(x(t))"],
+                ["x(y)", "u(t)", "p"],
+                ["xdot(t) = f(x(t),u(t),p)", "y(t) = g(x(t))"],
             )
+
+    def print_summary(self):
+        """Print info about"""
+        print("Input Summary\n-----------------")
+        print(f"states    = {self.state_name}")
+        print(f"inputs    = {self.input_name}")
+        print(f"parameter = {self.param_name}")
+        print(f"output    = {self.output_name}")
+        print("\nDimension Summary\n-----------------")
+        self.Fmodel.print_dimensions()
 
     def _validate_params(self):
         """Validate input params."""
         return None
-
-    def print_dimensions(self):
-        self.Fmodel.print_dimensions()
 
     def print_ode(self):
         print(self.model_dynamics)
@@ -147,7 +186,7 @@ class DynamicModel:
         - parameter:{self.param} = [p1,p2]
         """
 
-        return "self.model.print_dimensions()"  # string to print
+        return self.model.print_dimensions()  # string to print
 
 
 if __name__ == "__main__":  # when run for testing only
