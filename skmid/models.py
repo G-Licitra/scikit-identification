@@ -123,34 +123,40 @@ class DynamicModel:
 
         self.__check_input_consistency()
 
-        # Construct Symbolic Function RHS
+        self.__infer_model_type()
 
-        # Form an ode function
-        if self.np == None:  # CASE parameters are not specified
+        # Construct Symbolic Dynamic Model
+        if self.__model_type["struct"] is "f(x,u)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.inputs],
                 [self.model_dynamics, self.output],
-                ["x(y)", "u(t)"],
-                ["xdot(t) = f(x(t),u(t))", "y(t) = g(x(t))"],
+                self.__model_type["model_input"],
+                self.__model_type["model_output"],
             )
-        elif (
-            self.np == None and self.nu == None
-        ):  # CASE parameters AND input are not specified
+        elif self.__model_type["struct"] is "f(x)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states],
                 [self.model_dynamics, self.output],
-                ["x(y)"],
-                ["xdot(t) = f(x(t))", "y(t) = g(x(t))"],
+                self.__model_type["model_input"],
+                self.__model_type["model_output"],
             )
-        else:  # CASE states, input and parameters are specified
+        elif self.__model_type["struct"] is "f(x,p)":
+            self.Fmodel = ca.Function(
+                "model",
+                [self.states, self.param],
+                [self.model_dynamics, self.output],
+                self.__model_type["model_input"],
+                self.__model_type["model_output"],
+            )
+        elif self.__model_type["struct"] is "f(x,u,p)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.inputs, self.param],
                 [self.model_dynamics, self.output],
-                ["x(y)", "u(t)", "p"],
-                ["xdot(t) = f(x(t),u(t),p)", "y(t) = g(x(t))"],
+                self.__model_type["model_input"],
+                self.__model_type["model_output"],
             )
 
     def print_summary(self):
@@ -186,19 +192,55 @@ class DynamicModel:
                 "Input class is not consistent. output and output_name must have the same dimension."
             )
 
-    def evaluate(self, x0, u, param):
-        # TODO: add case with not param
-        (rhs_num, y_num) = self.Fmodel(x0, u0, param)
+    def __infer_model_type(self):
+        """Infer which inputs the model receives."""
+        if self.np == None:  # CASE parameters are not specified
+            self.__model_type = {
+                "struct": "f(x,u)",
+                "model_input": ["x(t)", "u(t)"],
+                "model_output": ["xdot(t) = f(x(t), u(t))", "y(t) = g(x(t))"],
+            }
+        elif (
+            self.np == None and self.nu == None
+        ):  # CASE parameters AND input are not specified
+            self.__model_type = {
+                "struct": "f(x)",
+                "model_input": ["x(t)"],
+                "model_output": ["xdot(t) = f(x(t))", "y(t) = g(x(t))"],
+            }
+        elif self.nu == None:  # CASE input are not specified
+            self.__model_type = {
+                "struct": "f(x,p)",
+                "model_input": ["x(t)", "p"],
+                "model_output": ["xdot(t) = f(x(t), p)", "y(t) = g(x(t))"],
+            }
+        else:  # CASE states, input and parameters are specified
+            self.__model_type = {
+                "struct": "f(x,u,p)",
+                "model_input": ["x(t)", "u(t)", "p"],
+                "model_output": ["xdot(t) = f(x(t), u(t), p)", "y(t) = g(x(t))"],
+            }
+
+    def __evaluate(self, x=list[float], u=None, param=None):
+        """Evaluate numerically Model Mapping"""
+        if self.__model_type["struct"] is "f(x,u)":
+            (rhs_num, y_num) = self.Fmodel(x, u)
+
+        elif self.__model_type["struct"] is "f(x)":
+            (rhs_num, y_num) = self.Fmodel(x)
+
+        elif self.__model_type["struct"] is "f(x,p)":
+            (rhs_num, y_num) = self.Fmodel(x, param)
+
+        elif self.__model_type["struct"] is "f(x,u,p)":
+            (rhs_num, y_num) = self.Fmodel(x, u, param)
+
         return (rhs_num, y_num)
 
-    def _validate_params(self):
-        """Validate input params."""
-        return None
-
-    def print_ode(self):
+    def __print_ode(self):
         print(self.model_dynamics)
 
-    def print_output(self):
+    def __print_output(self):
         print(self.output)
 
     def __repr__(self):
