@@ -129,3 +129,63 @@ class TestDynamicModel:
         )
         assert_frame_equal(Xval, Xtarget, check_dtype=False)
         assert_frame_equal(Yval, Ytarget, check_dtype=False)
+
+        # Case f(x,p)
+        # ----------------------------------------------------------------
+        model = DynamicModel(
+            states=x,
+            param=param,
+            model_dynamics=[x1 + x2**ka, -np.log(x1) - x2],
+            output=[kb * (x1 + x2) + np.sqrt(x1)],
+            state_name=["wx", "wy"],
+        )
+
+        x_init = [1, 2]
+        k_num = [2, 2]
+
+        (Xval, Yval) = model.evaluate(x=x_init, param=k_num)
+
+        Xtarget = pd.DataFrame(
+            data={
+                "wx": x_init[0] + x_init[1] ** k_num[0],
+                "wy": -np.log(x_init[0]) - x_init[1],
+            },
+            index=[0],
+        )
+        Ytarget = pd.DataFrame(
+            data={"y1": k_num[1] * (x_init[0] + x_init[1]) + np.sqrt(x_init[0])},
+            index=[0],
+        )
+        assert_frame_equal(Xval, Xtarget, check_dtype=False)
+        assert_frame_equal(Yval, Ytarget, check_dtype=False)
+
+        # Case f(x,u,p)
+        # ----------------------------------------------------------------
+        model = DynamicModel(
+            states=x,
+            inputs=u,
+            param=param,
+            model_dynamics=[x1 + x2**ka + u1, -np.log(x1) - x2 + u1 * u2],
+            output=[kb * (x1 + x2) + np.sqrt(x1)],
+            input_name=["W", "V"],
+        )
+
+        x_init = [1, 2]
+        k_num = [2, 2]
+        u_init = [0.2, 5]
+
+        (Xval, Yval) = model.evaluate(x=x_init, u=u_init, param=k_num)
+
+        Xtarget = pd.DataFrame(
+            data={
+                "x1": x_init[0] + x_init[1] ** k_num[0] + u_init[0],
+                "x2": -np.log(x_init[0]) - x_init[1] + u_init[0] * u_init[1],
+            },
+            index=[0],
+        )
+        Ytarget = pd.DataFrame(
+            data={"y1": k_num[1] * (x_init[0] + x_init[1]) + np.sqrt(x_init[0])},
+            index=[0],
+        )
+        assert_frame_equal(Xval, Xtarget, check_dtype=False)
+        assert_frame_equal(Yval, Ytarget, check_dtype=False)

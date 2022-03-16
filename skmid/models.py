@@ -99,36 +99,7 @@ class DynamicModel:
         self.np = None if param == None else param.shape[0]  # model parameters
         self.ny = self.nx if output == None else len(output)  # model output
 
-        # assign names, if specified
-        self.state_name = (
-            ["x" + str(i + 1) for i in range(self.nx)]
-            if state_name is None
-            else state_name
-        )
-
-        if self.nu != None:
-            self.input_name = (
-                ["u" + str(i + 1) for i in range(self.nu)]
-                if input_name is None
-                else input_name
-            )
-        else:
-            self.input_name = None
-
-        if self.np != None:
-            self.param_name = (
-                ["p" + str(i + 1) for i in range(self.np)]
-                if param_name is None
-                else param_name
-            )
-        else:
-            self.param_name = None
-
-        self.output_name = (
-            ["y" + str(i + 1) for i in range(self.ny)]
-            if output_name is None
-            else output_name
-        )
+        self.__match_attributes(state_name, input_name, param_name, output_name)
 
         self.__check_attribute_consistency()
 
@@ -177,6 +148,38 @@ class DynamicModel:
         print(f"output    = {self.output_name}")
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
+
+    def __match_attributes(self, state_name, input_name, param_name, output_name):
+        """Assign names, if specified"""
+        self.state_name = (
+            ["x" + str(i + 1) for i in range(self.nx)]
+            if state_name is None
+            else state_name
+        )
+
+        if self.nu != None:
+            self.input_name = (
+                ["u" + str(i + 1) for i in range(self.nu)]
+                if input_name is None
+                else input_name
+            )
+        else:
+            self.input_name = None
+
+        if self.np != None:
+            self.param_name = (
+                ["p" + str(i + 1) for i in range(self.np)]
+                if param_name is None
+                else param_name
+            )
+        else:
+            self.param_name = None
+
+        self.output_name = (
+            ["y" + str(i + 1) for i in range(self.ny)]
+            if output_name is None
+            else output_name
+        )
 
     def __check_attribute_consistency(self):
         """Check if Input class are consistent"""
