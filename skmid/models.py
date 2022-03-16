@@ -94,10 +94,10 @@ class DynamicModel:
         self.output = states if output == None else ca.vcat(output)
 
         # get dimentions
-        self.nx = states.shape[0]  # differential states
-        self.nu = None if input == None else inputs.shape[0]  # control input
+        self.nx = states.shape[0]
+        self.nu = None if inputs == None else inputs.shape[0]  # control input
         self.np = None if param == None else param.shape[0]  # model parameters
-        self.ny = self.nx if output == None else output.shape[0]  # model parameters
+        self.ny = self.nx if output == None else len(output)  # model output
 
         # assign names, if specified
         self.state_name = (
@@ -105,28 +105,37 @@ class DynamicModel:
             if state_name is None
             else state_name
         )
-        self.input_name = (
-            ["u" + str(i + 1) for i in range(self.nu)]
-            if input_name is None
-            else input_name
-        )
-        self.param_name = (
-            ["p" + str(i + 1) for i in range(self.np)]
-            if param_name is None
-            else param_name
-        )
+
+        if self.nu != None:
+            self.input_name = (
+                ["u" + str(i + 1) for i in range(self.nu)]
+                if input_name is None
+                else input_name
+            )
+        else:
+            self.input_name = None
+
+        if self.np != None:
+            self.param_name = (
+                ["p" + str(i + 1) for i in range(self.np)]
+                if param_name is None
+                else param_name
+            )
+        else:
+            self.param_name = None
+
         self.output_name = (
             ["y" + str(i + 1) for i in range(self.ny)]
             if output_name is None
             else output_name
         )
 
-        self.__check_input_consistency()
+        self.__check_attribute_consistency()
 
         self.__infer_model_type()
 
         # Construct Symbolic Dynamic Model
-        if self.__model_type["struct"] is "f(x,u)":
+        if self.__model_type["struct"] == "f(x,u)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.inputs],
@@ -134,7 +143,7 @@ class DynamicModel:
                 self.__model_type["model_input"],
                 self.__model_type["model_output"],
             )
-        elif self.__model_type["struct"] is "f(x)":
+        elif self.__model_type["struct"] == "f(x)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states],
@@ -142,7 +151,7 @@ class DynamicModel:
                 self.__model_type["model_input"],
                 self.__model_type["model_output"],
             )
-        elif self.__model_type["struct"] is "f(x,p)":
+        elif self.__model_type["struct"] == "f(x,p)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.param],
@@ -150,7 +159,7 @@ class DynamicModel:
                 self.__model_type["model_input"],
                 self.__model_type["model_output"],
             )
-        elif self.__model_type["struct"] is "f(x,u,p)":
+        elif self.__model_type["struct"] == "f(x,u,p)":
             self.Fmodel = ca.Function(
                 "model",
                 [self.states, self.inputs, self.param],
@@ -169,46 +178,54 @@ class DynamicModel:
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
 
-    def __check_input_consistency(self):
+    def __check_attribute_consistency(self):
         """Check if Input class are consistent"""
         if self.nx != self.model_dynamics.size()[0]:
             raise ValueError(
                 "Input class is not consistent. states and model_dynamics must have the same dimension."
             )
-        elif self.nx != len(self.state_name):
+
+        if self.nx != len(self.state_name):
             raise ValueError(
                 "Input class is not consistent. state and state_name must have the same dimension."
             )
-        elif self.nu != len(self.input_name):
+
+        if (self.nu is not None) and self.nu != len(self.input_name):
             raise ValueError(
                 "Input class is not consistent. state and state_name must have the same dimension."
             )
-        elif self.np != len(self.param_name):
+
+        if (self.np is not None) and (self.np != len(self.param_name)):
             raise ValueError(
                 "Input class is not consistent. param and param_name must have the same dimension."
             )
-        elif self.ny != len(self.output_name):
+
+        if self.ny != len(self.output_name):
             raise ValueError(
                 "Input class is not consistent. output and output_name must have the same dimension."
             )
 
     def __infer_model_type(self):
         """Infer which inputs the model receives."""
-        if self.np == None:  # CASE parameters are not specified
+
+        # CASE parameters are not specified
+        if self.nx is not None and self.nu is not None and self.np is None:
             self.__model_type = {
                 "struct": "f(x,u)",
                 "model_input": ["x(t)", "u(t)"],
                 "model_output": ["xdot(t) = f(x(t), u(t))", "y(t) = g(x(t))"],
             }
         elif (
-            self.np == None and self.nu == None
+            self.nx is not None and self.nu is None and self.np is None
         ):  # CASE parameters AND input are not specified
             self.__model_type = {
                 "struct": "f(x)",
                 "model_input": ["x(t)"],
                 "model_output": ["xdot(t) = f(x(t))", "y(t) = g(x(t))"],
             }
-        elif self.nu == None:  # CASE input are not specified
+        elif (
+            self.nx is not None and self.nu is None and self.np is not None
+        ):  # CASE input are not specified
             self.__model_type = {
                 "struct": "f(x,p)",
                 "model_input": ["x(t)", "p"],
@@ -221,21 +238,43 @@ class DynamicModel:
                 "model_output": ["xdot(t) = f(x(t), u(t), p)", "y(t) = g(x(t))"],
             }
 
-    def __evaluate(self, x=list[float], u=None, param=None):
+    def evaluate(self, x=list[float], u=None, param=None):
+
+        error_str = (
+            "Input mishmatch. Please check that the inputs"
+            "are consistent with class attributes."
+        )
+
         """Evaluate numerically Model Mapping"""
-        if self.__model_type["struct"] is "f(x,u)":
-            (rhs_num, y_num) = self.Fmodel(x, u)
+        if self.__model_type["struct"] == "f(x,u)":
+            if x is not None and u is not None and param is None:
+                (rhs_num, y_num) = self.Fmodel(x, u)
+            else:
+                raise ValueError(error_str)
 
-        elif self.__model_type["struct"] is "f(x)":
-            (rhs_num, y_num) = self.Fmodel(x)
+        if self.__model_type["struct"] == "f(x)":
+            if x is not None and u is None and param is None:
+                (rhs_num, y_num) = self.Fmodel(x)
+            else:
+                raise ValueError(error_str)
 
-        elif self.__model_type["struct"] is "f(x,p)":
-            (rhs_num, y_num) = self.Fmodel(x, param)
+        if self.__model_type["struct"] == "f(x,p)":
+            if x is not None and u is None and param is not None:
+                (rhs_num, y_num) = self.Fmodel(x, param)
+            else:
+                raise ValueError(error_str)
 
-        elif self.__model_type["struct"] is "f(x,u,p)":
-            (rhs_num, y_num) = self.Fmodel(x, u, param)
+        if self.__model_type["struct"] == "f(x,u,p)":
+            if x is not None and u is not None and param is not None:
+                (rhs_num, y_num) = self.Fmodel(x, u, param)
+            else:
+                raise ValueError(error_str)
 
-        return (rhs_num, y_num)
+        # Wrap values in pandas dataframe
+        Xval = pd.DataFrame(data=rhs_num.full().T, columns=self.state_name)
+        Yval = pd.DataFrame(data=y_num.full().T, columns=self.output_name)
+
+        return (Xval, Yval)
 
     def __print_ode(self):
         print(self.model_dynamics)
@@ -245,6 +284,21 @@ class DynamicModel:
 
     def __repr__(self):
         return self.model.print_dimensions()  # string to print
+
+
+# class LTImodel(DynamicModel):
+
+#     def __init__(
+#         self,
+#         A=None,
+#         B=None,
+#         C=None,
+#         param=None,
+#         state_name=None,
+#         input_name=None,
+#         param_name=None,
+#         output_name=None,
+#     ):
 
 
 if __name__ == "__main__":  # when run for testing only
