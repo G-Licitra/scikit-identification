@@ -8,7 +8,7 @@ import pandas as pd
 def generate_model_parameters(
     nx: int, nu: Union[int, None] = None, nparam: Union[int, None] = None
 ):
-    r"""Generate casADi symbol parameters.
+    """Generate casADi symbol parameters.
 
     Args:
         nx (int): The dimension of the differential state vector
@@ -35,27 +35,27 @@ def generate_model_parameters(
 
 
 class DynamicModel:
-    r"""
-    Casadi Class System
-    Formulation:
-    \dot(x(t)) = f(x(x), u(t), \theta)
+    """
+    Declaration of Symbolic Dynamic Model formulated as:
+
+    \dot(x(t)) = f(x(x), u(t), p)
     y(t) = g(f(x))
 
     with:
-    - $x(t) \in \Reˆ{n_{x}}$ differential states
-    - $u(t) \in \Reˆ{n_{u}}$ control inputs
-    - $\theta \in \Reˆ{n_{\theta}}$ model parameters
-    - $\dot(x(t)) \in \Reˆ{n_{x}}$ model dynamics defined as Ordinary Differential Equation (ODE)
-    - $y(t) \in \Reˆ{n_{y}}$$ model output
+    - $x(t) \in \Re^{n_{x}}$ differential states
+    - $u(t) \in \Re^{n_{u}}$ control inputs
+    - $p \in \Re^{n_{p}}$ model parameters
+    - $\dot(x(t)) \in \Re^{n_{x}}$ model dynamics defined as Ordinary Differential Equation (ODE)
+    - $y(t) \in \Re^{n_{y}}$$ model output
 
     Parameters
-    ---------
-    input1: array-like
-        explain input1
-    input2: None or str (default: None)
-        explain input2
-    figsize: tuple (default: (11.7, 8.27))
-        explain figsize
+    ----------
+    states : casadi.MX
+        Symbolic differential states $x(t) \in \Re^{n_{x}}$.
+    inputs : casadi.MX, default=None
+        Symbolic control inputs $u(t) \in \Re^{n_{u}}$.
+    param : casadi.MX, default=True
+        Symbolic model parameters $p \in \Re^{n_{p}}$.
 
     Returns
     ---------
@@ -70,15 +70,12 @@ class DynamicModel:
 
     """
 
-    # class variable: every instance will inherit this value
-    # nationality = "italy"
-
     def __init__(
         self,
-        states=list,
+        states=list[ca.casadi.MX],
         inputs=None,
         param=None,
-        model_dynamics=list,
+        model_dynamics=list[ca.casadi.MX],
         output=None,
         state_name=None,
         input_name=None,
@@ -94,7 +91,7 @@ class DynamicModel:
         self.output = states if output == None else ca.vcat(output)
 
         # get dimentions
-        self.nx = states.shape[0]
+        self.nx = states.shape[0]  # different states
         self.nu = None if inputs == None else inputs.shape[0]  # control input
         self.np = None if param == None else param.shape[0]  # model parameters
         self.ny = self.nx if output == None else len(output)  # model output
@@ -150,7 +147,7 @@ class DynamicModel:
         self.Fmodel.print_dimensions()
 
     def __match_attributes(self, state_name, input_name, param_name, output_name):
-        """Assign names, if specified"""
+        """Assign names to attributes, if specified"""
         self.state_name = (
             ["x" + str(i + 1) for i in range(self.nx)]
             if state_name is None
@@ -285,9 +282,6 @@ class DynamicModel:
     def __print_output(self):
         print(self.output)
 
-    def __repr__(self):
-        return self.model.print_dimensions()  # string to print
-
 
 # class LTImodel(DynamicModel):
 
@@ -319,13 +313,13 @@ if __name__ == "__main__":  # when run for testing only
     #%%
     sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 
-    # sys.print_dimensions()
-    # sys.print_ode()
-
     # numerical evaluation ===================================================
     x_test = [0.1, -0.1]
     u_test = [0.2, -0.1]
     theta_test = [0.1, 0.5]
+
+    sys.print_summary()
+
     rhs_num, y_num = sys.evaluate(x_test, u_test, theta_test)
 
     print(f"rhs = {rhs_num}, \ny = {y_num}")
