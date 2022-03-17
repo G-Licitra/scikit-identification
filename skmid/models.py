@@ -35,7 +35,7 @@ def generate_model_parameters(
 
 
 class DynamicModel:
-    """
+    r"""
     Declaration of Symbolic Dynamic Model formulated as:
 
     \dot(x(t)) = f(x(x), u(t), p)
@@ -50,23 +50,98 @@ class DynamicModel:
 
     Parameters
     ----------
-    states : casadi.MX
+    states : list[casadi.MX]
         Symbolic differential states $x(t) \in \Re^{n_{x}}$.
     inputs : casadi.MX, default=None
         Symbolic control inputs $u(t) \in \Re^{n_{u}}$.
     param : casadi.MX, default=True
         Symbolic model parameters $p \in \Re^{n_{p}}$.
+    model_dynamics : list[casadi.MX]
+        List of symbolic equations which define the model dynamics.
+    output : casadi.MX, default=None
+        List of symbolic equations which define the model output. If not specicient output=states, i.e. y(t)=x(t)
+    state_name : list[str], default=None
+        Differential state labels, defaulting to [x1, x2, ..., x_{n_{x}}].
+    input_name : list[str], default=None
+        Input labels, defaulting to [u1, u2, ..., x_{n_{u}}].
+    param_name : list[str], default=None
+        Parameter labels, defaulting to [p1, p2, ..., p_{n_{p}}].
+    output_name : list[str], default=None
+        output labels, defaulting to [y1, y2, ..., y_{n_{y}}].
 
-    Returns
-    ---------
-    p_plot: Figure
+    See Also
+    --------
+    DynamicModel.print_summary : Print info about model inputs, output and their corresponding dimension.
+    DynamicModel.evaluate : Numerical evaludation of the model.
+
 
     Examples
     ---------
+    Construct simple dynamic model with one differential state, one input.
 
-    >>> input1 = np.random.rand(100)
-    >>> input2 = 2
-    >>> p_plot = func(input1, input2)
+    >>> (x, u, _) = generate_model_parameters(nx=1, nu=1)
+    >>> model = DynamicModel(states=x, inputs=u, model_dynamics=[2*x**2 + u])
+    >>> model.print_summary()
+    Input Summary
+    -----------------
+    states    = ['x1']
+    inputs    = ['u1']
+    parameter = None
+    output    = ['y1']
+
+    Dimension Summary
+    -----------------
+    Number of inputs: 2
+    Input 0 ("x(t)"): 1x1
+    Input 1 ("u(t)"): 1x1
+    Number of outputs: 2
+    Output 0 ("xdot(t) = f(x(t), u(t))"): 1x1
+    Output 1 ("y(t) = g(x(t))"): 1x1
+
+    Note that output is equal to states when not specified.
+
+    Construct Lorenz system (more info [here](https://en.wikipedia.org/wiki/Lorenz_system).
+
+    >>> (states, inputs, param) = generate_model_parameters(nx=3, nu=3, nparam=3)
+
+    Define sub-variables for better readibility of the equation
+
+    >>> (x,y,z) = states[0], states[1], states[2]
+    >>> (sigma, rho, beta) = param[0], param[1], param[2]
+    >>> model = DynamicModel(
+    ...        states=states,
+    ...        param=param,
+    ...        model_dynamics=model_dynamics,
+    ...        state_name = ['x', 'y', 'z'], # ensure the correct order
+    ...        param_name = ['sigma', 'rho', 'beta'])
+
+    >>> model.print_summary()
+    Input Summary
+    -----------------
+    states    = ['x', 'y', 'z']
+    inputs    = None
+    parameter = ['sigma', 'rho', 'beta']
+    output    = ['y1', 'y2', 'y3']
+
+    Dimension Summary
+    -----------------
+    Number of inputs: 2
+    Input 0 ("x(t)"): 3x1
+    Input 1 ("p"): 3x1
+    Number of outputs: 2
+    Output 0 ("xdot(t) = f(x(t), p)"): 3x1
+    Output 1 ("y(t) = g(x(t))"): 3x1
+
+    Evalute function. Lorenz used the following parameter sigma=10, rho=8/3, beta=28.
+    The x would represent the initial condition set at x0=0.0, y0=40.0, z0=0.01
+    >>> (Xdot_val, Y_val) = model.evaluate(x=[0.0, 40.0, 0.01], param=[10, 8/3, 28])
+    >>> Xdot_val
+        x     y     z
+    0  400.0 -40.0 -0.28
+
+    >>> Y_val
+        y1    y2    y3
+    0  0.0  40.0  0.01
 
     """
 
@@ -137,7 +212,7 @@ class DynamicModel:
             )
 
     def print_summary(self):
-        """Print info about"""
+        """Print info about model inputs, output and their corresponding dimension."""
         print("Input Summary\n-----------------")
         print(f"states    = {self.state_name}")
         print(f"inputs    = {self.input_name}")
@@ -145,6 +220,44 @@ class DynamicModel:
         print(f"output    = {self.output_name}")
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
+
+    def evaluate(self, x=list[float], u=None, param=None):
+        """Numerical evaludation of the model."""
+
+        error_str = (
+            "Input mishmatch. Please check that the inputs"
+            "are consistent with class attributes."
+        )
+
+        if self.__model_type["struct"] == "f(x,u)":
+            if x is not None and u is not None and param is None:
+                (rhs_num, y_num) = self.Fmodel(x, u)
+            else:
+                raise ValueError(error_str)
+
+        if self.__model_type["struct"] == "f(x)":
+            if x is not None and u is None and param is None:
+                (rhs_num, y_num) = self.Fmodel(x)
+            else:
+                raise ValueError(error_str)
+
+        if self.__model_type["struct"] == "f(x,p)":
+            if x is not None and u is None and param is not None:
+                (rhs_num, y_num) = self.Fmodel(x, param)
+            else:
+                raise ValueError(error_str)
+
+        if self.__model_type["struct"] == "f(x,u,p)":
+            if x is not None and u is not None and param is not None:
+                (rhs_num, y_num) = self.Fmodel(x, u, param)
+            else:
+                raise ValueError(error_str)
+
+        # Wrap values in pandas dataframe
+        Xval = pd.DataFrame(data=rhs_num.full().T, columns=self.state_name)
+        Yval = pd.DataFrame(data=y_num.full().T, columns=self.output_name)
+
+        return (Xval, Yval)
 
     def __match_attributes(self, state_name, input_name, param_name, output_name):
         """Assign names to attributes, if specified"""
@@ -237,44 +350,6 @@ class DynamicModel:
                 "model_input": ["x(t)", "u(t)", "p"],
                 "model_output": ["xdot(t) = f(x(t), u(t), p)", "y(t) = g(x(t))"],
             }
-
-    def evaluate(self, x=list[float], u=None, param=None):
-
-        error_str = (
-            "Input mishmatch. Please check that the inputs"
-            "are consistent with class attributes."
-        )
-
-        """Evaluate numerically Model Mapping"""
-        if self.__model_type["struct"] == "f(x,u)":
-            if x is not None and u is not None and param is None:
-                (rhs_num, y_num) = self.Fmodel(x, u)
-            else:
-                raise ValueError(error_str)
-
-        if self.__model_type["struct"] == "f(x)":
-            if x is not None and u is None and param is None:
-                (rhs_num, y_num) = self.Fmodel(x)
-            else:
-                raise ValueError(error_str)
-
-        if self.__model_type["struct"] == "f(x,p)":
-            if x is not None and u is None and param is not None:
-                (rhs_num, y_num) = self.Fmodel(x, param)
-            else:
-                raise ValueError(error_str)
-
-        if self.__model_type["struct"] == "f(x,u,p)":
-            if x is not None and u is not None and param is not None:
-                (rhs_num, y_num) = self.Fmodel(x, u, param)
-            else:
-                raise ValueError(error_str)
-
-        # Wrap values in pandas dataframe
-        Xval = pd.DataFrame(data=rhs_num.full().T, columns=self.state_name)
-        Yval = pd.DataFrame(data=y_num.full().T, columns=self.output_name)
-
-        return (Xval, Yval)
 
     def __print_ode(self):
         print(self.model_dynamics)
