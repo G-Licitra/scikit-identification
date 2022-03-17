@@ -145,6 +145,7 @@ class DynamicModel:
 
     """
 
+    # TODO adjust input
     def __init__(
         self,
         states=list[ca.casadi.MX],
