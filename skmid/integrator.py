@@ -1,10 +1,12 @@
 #%%
 import casadi as ca
+import numpy as np
 
+from skmid.models import _infer_model_type
 from skmid.models import DynamicModel
 
 
-class RungeKutta4:
+class RungeKutta4(DynamicModel):
     r"""Create Explicit Runge Kutta order 4 integrator`
 
     Parameters
@@ -33,9 +35,11 @@ class RungeKutta4:
 
     """
 
-    def __init__(self, model: DynamicModel, fs: int, N_steps_per_sample: int = 1):
+    def __init__(self, *, model: DynamicModel, fs: int = 1):
 
-        dt = 1 / fs / N_steps_per_sample
+        __N_steps_per_sample: int = 1
+
+        dt = 1 / fs / __N_steps_per_sample
 
         # unpack model
         x = model.states
@@ -45,7 +49,9 @@ class RungeKutta4:
         # Function rhs, ordinary differential equation
         Fode = model.Fmodel
 
-        if param is None:
+        _model_type = _infer_model_type(model)
+
+        if _model_type["struct"] == "f(x,u)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = Fode(x, u)
             (k2, _) = Fode(x + dt / 2.0 * k1, u)
@@ -58,12 +64,65 @@ class RungeKutta4:
 
             # Carry out forward simulation within the entire sample time
             X = x
-            for i in range(N_steps_per_sample):
+            for i in range(__N_steps_per_sample):
                 X = one_step(X, u)
 
             # Create a function that simulates all step propagation on a sample
-            self.one_sample = ca.Function("one_sample", [x, u], [X])
-        else:
+            self.one_sample = ca.Function(
+                "one_sample",
+                [x, u],
+                [X],
+                ["x[k]", "u[k]"],
+                ["x[k+1] = x[k] + dt * f(x[k], u[k])"],
+            )
+
+        elif _model_type["struct"] == "f(x)":
+            # Build an RK4 integrator with param as symbolic variable
+            (k1, _) = Fode(x)
+            (k2, _) = Fode(x + dt / 2.0 * k1)
+            (k3, _) = Fode(x + dt / 2.0 * k2)
+            (k4, _) = Fode(x + dt * k3)
+            xf = x + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
+
+            # Create a function that simulates one step propagation in a sample
+            one_step = ca.Function("one_step", [x], [xf])
+
+            # Carry out forward simulation within the entire sample time
+            X = x
+            for i in range(__N_steps_per_sample):
+                X = one_step(X, u)
+
+            # Create a function that simulates all step propagation on a sample
+            self.one_sample = ca.Function(
+                "one_sample", [x], [X], ["x[k]"], ["x[k+1] = x[k] + dt * f(x[k])"]
+            )
+
+        elif _model_type["struct"] == "f(x,p)":
+            # Build an RK4 integrator with param as symbolic variable
+            (k1, _) = Fode(x, param)
+            (k2, _) = Fode(x + dt / 2.0 * k1, param)
+            (k3, _) = Fode(x + dt / 2.0 * k2, param)
+            (k4, _) = Fode(x + dt * k3, param)
+            xf = x + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
+
+            # Create a function that simulates one step propagation in a sample
+            one_step = ca.Function("one_step", [x, param], [xf])
+
+            # Carry out forward simulation within the entire sample time
+            X = x
+            for i in range(__N_steps_per_sample):
+                X = one_step(X, param)
+
+            # Create a function that simulates all step propagation on a sample
+            self.one_sample = ca.Function(
+                "one_sample",
+                [x, param],
+                [X],
+                ["x[k]", "param"],
+                ["x[k+1] = x[k] + dt * f(x[k], param)"],
+            )
+
+        elif _model_type["struct"] == "f(x,u,p)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = Fode(x, u, param)
             (k2, _) = Fode(x + dt / 2.0 * k1, u, param)
@@ -76,11 +135,19 @@ class RungeKutta4:
 
             # Carry out forward simulation within the entire sample time
             X = x
-            for i in range(N_steps_per_sample):
+            for i in range(__N_steps_per_sample):
                 X = one_step(X, u, param)
 
             # Create a function that simulates all step propagation on a sample
-            self.one_sample = ca.Function("one_sample", [x, u, param], [X])
+            self.one_sample = ca.Function(
+                "one_sample",
+                [x, u, param],
+                [X],
+                ["x[k]", "u[k]", "param"],
+                ["x[k+1] = x[k] + dt * f(x[k], u[k], param)"],
+            )
+        else:
+            raise ValueError("Model type not supported")
 
     def simulate(self, x0, input, param=None):
 
@@ -106,45 +173,45 @@ class RungeKutta4:
 
 #%%----------------------------------------------------------------
 
-# import numpy as np
-# import pandas as pd
-# from scipy.signal import chirp
-# from skmid.models import generate_model_parameters, DynamicModel
-# import seaborn as sns
+import numpy as np
+import pandas as pd
+from scipy.signal import chirp
+from skmid.models import generate_model_parameters, DynamicModel
+import seaborn as sns
 
-# # Choose an excitation signal
-# np.random.seed(42)
-# N = 2000  # Number of samples
-# fs = 500  # Sampling frequency [hz]
-# t = np.linspace(0, (N - 1) * (1 / fs), N)
-# df_input = pd.DataFrame(
-#     data={
-#         "u1": 2 * chirp(t, f0=1, f1=10, t1=5, method="logarithmic"),
-#         "u2": 2 * np.random.random(N),
-#     },
-#     index=t,
-# )
+# Choose an excitation signal
+np.random.seed(42)
+N = 2000  # Number of samples
+fs = 500  # Sampling frequency [hz]
+t = np.linspace(0, (N - 1) * (1 / fs), N)
+df_input = pd.DataFrame(
+    data={
+        "u1": 2 * chirp(t, f0=1, f1=10, t1=5, method="logarithmic"),
+        "u2": 2 * np.random.random(N),
+    },
+    index=t,
+)
 
-# x0 = [1, -1]  # Initial Condition x0 = [0;0]; [nx = 2]
+x0 = [1, -1]  # Initial Condition x0 = [0;0]; [nx = 2]
 
 # #%%----------------------------------------------------------------
 
-# (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+(x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
 
-# # assign specific name
-# x1, x2 = x[0], x[1]
-# u1, u2 = u[0], u[1]
-# ka, kb = param[0], param[1]
+# assign specific name
+x1, x2 = x[0], x[1]
+u1, u2 = u[0], u[1]
+ka, kb = param[0], param[1]
 
-# param_truth = [0.1, 0.5]  # ca.DM([0.1, 0.5])
+param_truth = [0.1, 0.5]  # ca.DM([0.1, 0.5])
 
-# # xdot = f(x,u,p) <==> rhs = f(x,u,p)
-# rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
+# xdot = f(x,u,p) <==> rhs = f(x,u,p)
+rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
 
-# sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
+sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 
 # #%%
-# rk4 = RungeKutta4(model=sys, fs=fs)
+rk4 = RungeKutta4(model=sys, fs=fs)
 
 # #%%
 # xsim = rk4.simulate(x0=x0, input=df_input, param=param_truth)
