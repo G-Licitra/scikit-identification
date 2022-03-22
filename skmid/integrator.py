@@ -49,9 +49,9 @@ class RungeKutta4(DynamicModel):
         # Function rhs, ordinary differential equation
         Fode = model.Fmodel
 
-        _model_type = _infer_model_type(model)
+        self.__model_type = _infer_model_type(model)
 
-        if _model_type["struct"] == "f(x,u)":
+        if self.__model_type["struct"] == "f(x,u)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = Fode(x, u)
             (k2, _) = Fode(x + dt / 2.0 * k1, u)
@@ -76,7 +76,7 @@ class RungeKutta4(DynamicModel):
                 ["x[k+1] = x[k] + dt * f(x[k], u[k])"],
             )
 
-        elif _model_type["struct"] == "f(x)":
+        elif self.__model_type["struct"] == "f(x)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = Fode(x)
             (k2, _) = Fode(x + dt / 2.0 * k1)
@@ -97,7 +97,7 @@ class RungeKutta4(DynamicModel):
                 "one_sample", [x], [X], ["x[k]"], ["x[k+1] = x[k] + dt * f(x[k])"]
             )
 
-        elif _model_type["struct"] == "f(x,p)":
+        elif self.__model_type["struct"] == "f(x,p)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = Fode(x, param)
             (k2, _) = Fode(x + dt / 2.0 * k1, param)
@@ -122,7 +122,7 @@ class RungeKutta4(DynamicModel):
                 ["x[k+1] = x[k] + dt * f(x[k], param)"],
             )
 
-        elif _model_type["struct"] == "f(x,u,p)":
+        elif self.__model_type["struct"] == "f(x,u,p)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = Fode(x, u, param)
             (k2, _) = Fode(x + dt / 2.0 * k1, u, param)
@@ -149,8 +149,9 @@ class RungeKutta4(DynamicModel):
         else:
             raise ValueError("Model type not supported")
 
-    def simulate(self, x0, input, param=None):
+    def simulate(self, x0, input=None, param=None):
 
+        # TODO input flexible for pd and np,
         # derive N_steps.
         N_steps = len(input)
 
@@ -161,14 +162,28 @@ class RungeKutta4(DynamicModel):
 
         # Propagate simulation for N steps and generate trajectory
         all_samples = self.one_sample.mapaccum("all_samples", N_steps)
-        x_sim = np.array(all_samples(x0, input.values.T, ca.repmat(param, 1, N_steps)))
+
+        if self.__model_type["struct"] == "f(x,u)":
+            x_sim = np.array(all_samples(x0, input.values.T))
+        elif self.__model_type["struct"] == "f(x)":
+            x_sim = np.array(all_samples(x0))
+        elif self.__model_type["struct"] == "f(x,p)":
+            x_sim = np.array(all_samples(x0, ca.repmat(param, 1, N_steps)))
+        elif self.__model_type["struct"] == "f(x,u,p)":
+            x_sim = np.array(
+                all_samples(x0, input.values.T, ca.repmat(param, 1, N_steps))
+            )
 
         # attach the initial condition to x_sim with dim=[N_steps+1, nx]
         x_sim = np.concatenate([np.array(x0).reshape(1, -1), x_sim.T])
 
         df_sim = pd.DataFrame(data=x_sim, index=time.reshape(-1))
 
+        # TODO get X, Y
         return df_sim
+
+    def plot(self):
+        return -1
 
 
 #%%----------------------------------------------------------------
@@ -214,7 +229,8 @@ sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 rk4 = RungeKutta4(model=sys, fs=fs)
 
 # #%%
-# xsim = rk4.simulate(x0=x0, input=df_input, param=param_truth)
+xsim = rk4.simulate(x0=x0, input=df_input, param=param_truth)
 
 # # %%
+print("Done!")
 # xsim.plot()
