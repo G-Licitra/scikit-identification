@@ -158,7 +158,10 @@ class RungeKutta4:
         # time = np.concatenate([time.values.reshape(-1, 1), np.array(ts, ndmin=2)])
 
         # Propagate simulation for N steps and generate trajectory
-        all_samples = self.one_sample.mapaccum("all_samples", self.N_steps)
+        all_samples = self.one_sample.mapaccum("x_simulation", self.N_steps)
+
+        # Create propagation map y = g(x)
+        all_output = self.model.Fmodel.map(self.N_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
             x_sim = np.array(all_samples(x0, input.values.T))
@@ -169,6 +172,10 @@ class RungeKutta4:
         elif self.__model_type["struct"] == "f(x,u,p)":
             x_sim = np.array(
                 all_samples(x0, input.values.T, ca.repmat(param, 1, self.N_steps))
+            )
+
+            y_sim = np.array(
+                all_output(x_sim, input.values.T, ca.repmat(param, 1, self.N_steps))
             )
 
         # pack differential state x attaching initial condition x0
