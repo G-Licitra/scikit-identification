@@ -32,7 +32,7 @@ sys = DynamicModel(states=states, param=param, model_dynamics=rhs)
 x_test = [10, 10]
 param_test = [2 / 3, 4 / 3, 1, 1]
 sys.print_summary()
-rhs_num, y_num = sys.evaluate(x=x_test, param=param_test)
+rhs_num, y_num = sys.evaluate(state_num=x_test, param_num=param_test)
 print(f"rhs = {rhs_num}, \ny = {y_num}")
 
 

@@ -3,6 +3,7 @@ import warnings
 
 import casadi as ca
 import numpy as np
+import pandas as pd
 
 from skmid.models import _infer_model_type
 from skmid.models import DynamicModel
@@ -244,59 +245,49 @@ class RungeKutta4:
 
             return (input, N_steps)
 
-    def plot(self):
-        return -1
 
+if __name__ == "__main__":  # when run for testing only
 
-#%%----------------------------------------------------------------
+    from scipy.signal import chirp
+    from skmid.models import generate_model_parameters, DynamicModel
 
-import numpy as np
-import pandas as pd
-from scipy.signal import chirp
-from skmid.models import generate_model_parameters, DynamicModel
-import seaborn as sns
+    # Choose an excitation signal
+    np.random.seed(42)
+    N = 2000  # Number of samples
+    fs = 500  # Sampling frequency [hz]
+    t = np.linspace(0, (N - 1) * (1 / fs), N)
+    df_input = pd.DataFrame(
+        data={
+            "u1": 2 * chirp(t, f0=1, f1=10, t1=5, method="logarithmic"),
+            "u2": 2 * np.random.random(N),
+        },
+        index=t,
+    )
 
-# Choose an excitation signal
-np.random.seed(42)
-N = 2000  # Number of samples
-fs = 500  # Sampling frequency [hz]
-t = np.linspace(0, (N - 1) * (1 / fs), N)
-df_input = pd.DataFrame(
-    data={
-        "u1": 2 * chirp(t, f0=1, f1=10, t1=5, method="logarithmic"),
-        "u2": 2 * np.random.random(N),
-    },
-    index=t,
-)
+    x0 = [1, -1]  # Initial Condition x0 = [0;0]; [nx = 2]
 
-x0 = [1, -1]  # Initial Condition x0 = [0;0]; [nx = 2]
+    #%%----------------------------------------------------------------
 
-#%%----------------------------------------------------------------
+    (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
 
-(x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+    # assign specific name
+    x1, x2 = x[0], x[1]
+    u1, u2 = u[0], u[1]
+    ka, kb = param[0], param[1]
 
-# assign specific name
-x1, x2 = x[0], x[1]
-u1, u2 = u[0], u[1]
-ka, kb = param[0], param[1]
+    param_truth = [0.1, 0.5]  # ca.DM([0.1, 0.5])
 
-param_truth = [0.1, 0.5]  # ca.DM([0.1, 0.5])
+    # xdot = f(x,u,p) <==> rhs = f(x,u,p)
+    rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
 
-# xdot = f(x,u,p) <==> rhs = f(x,u,p)
-rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
+    sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 
-sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
+    # #%%
+    rk4 = RungeKutta4(model=sys, fs=fs)
 
-# #%%
-rk4 = RungeKutta4(model=sys, fs=fs)
+    # #%%
+    rk4.simulate(x0=x0, input=df_input, param=param_truth)
 
-# #%%
-rk4.simulate(x0=x0, input=df_input, param=param_truth)
+    df_xsim = rk4.x_sim_
 
-rk4.x_sim_
-
-# # %%
-print("Done!")
-# xsim.plot()
-
-# %%
+    print(df_xsim.head())
