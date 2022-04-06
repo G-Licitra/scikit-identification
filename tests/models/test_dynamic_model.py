@@ -79,7 +79,7 @@ class TestDynamicModel:
             output=[2 * (x1 + x2), x1, x2 / 2],
         )
 
-        (Xval, Yval) = model.evaluate(x=[1, 1], u=[1, 1])
+        (Xval, Yval) = model.evaluate(state_num=[1, 1], input_num=[1, 1])
 
         Xtarget = pd.DataFrame(data={"x1": 4.0, "x2": -4.0}, index=[0])
         Ytarget = pd.DataFrame(data={"y1": 4.0, "y2": 1.0, "y3": 0.5}, index=[0])
@@ -97,7 +97,7 @@ class TestDynamicModel:
             output_name=["a", "b", "c"],
         )
 
-        (Xval, Yval) = model.evaluate(x=[-1, -1], u=[-1, -1])
+        (Xval, Yval) = model.evaluate(state_num=[-1, -1], input_num=[-1, -1])
 
         Xtarget = pd.DataFrame(data={"p": -4.0, "q": 4.0}, index=[0])
         Ytarget = pd.DataFrame(data={"a": -4.0, "b": -1.0, "c": -0.5}, index=[0])
@@ -115,7 +115,7 @@ class TestDynamicModel:
         )
 
         x_init = [1, 2]
-        (Xval, Yval) = model.evaluate(x=x_init)
+        (Xval, Yval) = model.evaluate(state_num=x_init)
 
         Xtarget = pd.DataFrame(
             data={
@@ -143,7 +143,7 @@ class TestDynamicModel:
         x_init = [1, 2]
         k_num = [2, 2]
 
-        (Xval, Yval) = model.evaluate(x=x_init, param=k_num)
+        (Xval, Yval) = model.evaluate(state_num=x_init, param_num=k_num)
 
         Xtarget = pd.DataFrame(
             data={
@@ -174,7 +174,9 @@ class TestDynamicModel:
         k_num = [2, 2]
         u_init = [0.2, 5]
 
-        (Xval, Yval) = model.evaluate(x=x_init, u=u_init, param=k_num)
+        (Xval, Yval) = model.evaluate(
+            state_num=x_init, input_num=u_init, param_num=k_num
+        )
 
         Xtarget = pd.DataFrame(
             data={

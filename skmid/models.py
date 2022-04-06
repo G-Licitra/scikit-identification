@@ -78,7 +78,7 @@ def generate_model_parameters(
 
 
 class DynamicModel:
-    r"""
+    """
     Declaration of Symbolic Dynamic Model formulated as:
 
     \dot(x(t)) = f(x(x), u(t), p)
@@ -177,7 +177,7 @@ class DynamicModel:
 
     Evalute function. Lorenz used the following parameter sigma=10, rho=8/3, beta=28.
     The x would represent the initial condition set at x0=0.0, y0=40.0, z0=0.01
-    >>> (Xdot_val, Y_val) = model.evaluate(x=[0.0, 40.0, 0.01], param=[10, 8/3, 28])
+    >>> (Xdot_val, Y_val) = model.evaluate(state_num=[0.0, 40.0, 0.01], param_num=[10, 8/3, 28])
     >>> Xdot_val
         x     y     z
     0  400.0 -40.0 -0.28
@@ -266,7 +266,8 @@ class DynamicModel:
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
 
-    def evaluate(self, *, x=list[float], u=None, param=None):
+    # TODO: replace x, y, param with state_num, input_num, param_num
+    def evaluate(self, *, state_num=list[float], input_num=None, param_num=None):
         """Numerical evaludation of the model."""
 
         error_str = """Input mishmatch. Please check that the inputs are consistent with class attributes."""
@@ -274,34 +275,40 @@ class DynamicModel:
         _model_type = _infer_model_type(self)
 
         if _model_type["struct"] == "f(x,u)":
-            if x is not None and u is not None and param is None:
-                (rhs_num, y_num) = self.Fmodel(x, u)
+            if state_num is not None and input_num is not None and param_num is None:
+                (rhs_num, y_num) = self.Fmodel(state_num, input_num)
             else:
                 raise ValueError(error_str)
 
         if _model_type["struct"] == "f(x)":
-            if x is not None and u is None and param is None:
-                (rhs_num, y_num) = self.Fmodel(x)
+            if state_num is not None and input_num is None and param_num is None:
+                (rhs_num, y_num) = self.Fmodel(state_num)
             else:
                 raise ValueError(error_str)
 
         if _model_type["struct"] == "f(x,p)":
-            if x is not None and u is None and param is not None:
-                (rhs_num, y_num) = self.Fmodel(x, param)
+            if state_num is not None and input_num is None and param_num is not None:
+                (rhs_num, y_num) = self.Fmodel(state_num, param_num)
             else:
                 raise ValueError(error_str)
 
         if _model_type["struct"] == "f(x,u,p)":
-            if x is not None and u is not None and param is not None:
-                (rhs_num, y_num) = self.Fmodel(x, u, param)
+            if (
+                state_num is not None
+                and input_num is not None
+                and param_num is not None
+            ):
+                (rhs_num, y_num) = self.Fmodel(state_num, input_num, param_num)
             else:
                 raise ValueError(error_str)
 
         # Wrap values in pandas dataframe
-        Xval = pd.DataFrame(data=rhs_num.full().T, columns=self.state_name)
-        Yval = pd.DataFrame(data=y_num.full().T, columns=self.output_name)
+        model_dynamics_num = pd.DataFrame(
+            data=rhs_num.full().T, columns=self.state_name
+        )
+        output_num = pd.DataFrame(data=y_num.full().T, columns=self.output_name)
 
-        return (Xval, Yval)
+        return (model_dynamics_num, output_num)
 
     def __match_attributes(self, state_name, input_name, param_name, output_name):
         """Assign names to attributes, if specified"""
