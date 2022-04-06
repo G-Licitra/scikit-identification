@@ -266,13 +266,10 @@ class DynamicModel:
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
 
-    def evaluate(self, x=list[float], u=None, param=None):
+    def evaluate(self, *, x=list[float], u=None, param=None):
         """Numerical evaludation of the model."""
 
-        error_str = (
-            "Input mishmatch. Please check that the inputs"
-            "are consistent with class attributes."
-        )
+        error_str = """Input mishmatch. Please check that the inputs are consistent with class attributes."""
 
         _model_type = _infer_model_type(self)
 

@@ -46,6 +46,10 @@ class RungeKutta4:
         self.model = model
         self.__model_type = _infer_model_type(self.model)
 
+        x = model.states
+        u = model.inputs
+        param = model.param
+
         if self.__model_type["struct"] == "f(x,u)":
             # Build an RK4 integrator with param as symbolic variable
             (k1, _) = self.model.Fmodel(x, u)
@@ -144,9 +148,12 @@ class RungeKutta4:
         else:
             raise ValueError("Model type not supported")
 
-    def simulate(self, x0, input=None, param=None):
+    def simulate(self, *, x0, input=None, param=None, N_steps=None):
 
-        input = self.__validate_input(input)
+        if input is not None:
+            (input, N_steps) = self.__validate_input(input)
+        else:
+            N_steps = 100  # default value if input is not provided
 
         # TODO input flexible for pd and np,  nd
         # derive N_steps.
@@ -158,24 +165,24 @@ class RungeKutta4:
         # time = np.concatenate([time.values.reshape(-1, 1), np.array(ts, ndmin=2)])
 
         # Propagate simulation for N steps and generate trajectory
-        all_samples = self.one_sample.mapaccum("x_simulation", self.N_steps)
+        all_samples = self.one_sample.mapaccum("x_simulation", N_steps)
 
         # Create propagation map y = g(x)
-        all_output = self.model.Fmodel.map(self.N_steps)
+        all_output = self.model.Fmodel.map(N_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
             x_sim = np.array(all_samples(x0, input.values.T))
         elif self.__model_type["struct"] == "f(x)":
             x_sim = np.array(all_samples(x0))
         elif self.__model_type["struct"] == "f(x,p)":
-            x_sim = np.array(all_samples(x0, ca.repmat(param, 1, self.N_steps)))
+            x_sim = np.array(all_samples(x0, ca.repmat(param, 1, N_steps)))
         elif self.__model_type["struct"] == "f(x,u,p)":
             x_sim = np.array(
-                all_samples(x0, input.values.T, ca.repmat(param, 1, self.N_steps))
+                all_samples(x0, input.values.T, ca.repmat(param, 1, N_steps))
             )
 
             y_sim = np.array(
-                all_output(x_sim, input.values.T, ca.repmat(param, 1, self.N_steps))
+                all_output(x_sim, input.values.T, ca.repmat(param, 1, N_steps))
             )
 
         # pack differential state x attaching initial condition x0
@@ -185,18 +192,25 @@ class RungeKutta4:
             columns=self.model.state_name,
         )
 
+        # pack output in dataframe
+        self.y_sim_ = pd.DataFrame(
+            data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
+            index=input.index.append(pd.Index([input.index[-1] + 1 / self.fs])),
+            columns=self.model.state_name,
+        )
+
     def __validate_input(self, input):
         """determine the type of input"""
 
         # check dimension of input and param
-        self.N_steps = len(input)
+        N_steps = len(input)
 
         # get time and attach one extra sample to time
         if isinstance(input, np.ndarray):
             # convert input to pandas dataframe
             input = pd.DataFrame(
                 data=input,
-                index=np.linspace(0, (self.N_steps - 1) * (1 / self.fs), self.N_steps),
+                index=np.linspace(0, (N_steps - 1) * (1 / self.fs), N_steps),
             )
 
         if isinstance(input, pd.DataFrame):  # check if input is a dataframe
@@ -207,9 +221,7 @@ class RungeKutta4:
 
             if np.mean(np.diff(input.index)) != 1 / self.fs:
                 # Detect sample frequency mismatch
-                input.index = np.linspace(
-                    0, (self.N_steps - 1) * (1 / self.fs), self.N_steps
-                )
+                input.index = np.linspace(0, (N_steps - 1) * (1 / self.fs), N_steps)
                 warnings.warn(
                     f"""The input index has a different fs than specified in the object.
                                   The input index has been modified by using fs={self.fs} Hz.
@@ -225,14 +237,12 @@ class RungeKutta4:
                 )
                 input.columns = self.model.input_name
 
-            return input
+            input = pd.DataFrame(
+                data=input.values,
+                index=np.linspace(0, (N_steps - 1) * (1 / self.fs), N_steps),
+            )
 
-        input = pd.DataFrame(
-            data=input.values,
-            index=np.linspace(0, (self.N_steps - 1) * (1 / self.fs), self.N_steps),
-        )
-
-        return input
+            return (input, N_steps)
 
     def plot(self):
         return -1
