@@ -223,7 +223,7 @@ class DynamicModel:
 
         # Construct Symbolic Dynamic Model
         if _model_type["struct"] == "f(x,u)":
-            self.Fmodel = ca.Function(
+            self.model_function = ca.Function(
                 "model",
                 [self.states, self.inputs],
                 [self.model_dynamics, self.output],
@@ -231,7 +231,7 @@ class DynamicModel:
                 _model_type["model_output"],
             )
         elif _model_type["struct"] == "f(x)":
-            self.Fmodel = ca.Function(
+            self.model_function = ca.Function(
                 "model",
                 [self.states],
                 [self.model_dynamics, self.output],
@@ -239,7 +239,7 @@ class DynamicModel:
                 _model_type["model_output"],
             )
         elif _model_type["struct"] == "f(x,p)":
-            self.Fmodel = ca.Function(
+            self.model_function = ca.Function(
                 "model",
                 [self.states, self.param],
                 [self.model_dynamics, self.output],
@@ -247,7 +247,7 @@ class DynamicModel:
                 _model_type["model_output"],
             )
         elif _model_type["struct"] == "f(x,u,p)":
-            self.Fmodel = ca.Function(
+            self.model_function = ca.Function(
                 "model",
                 [self.states, self.inputs, self.param],
                 [self.model_dynamics, self.output],
@@ -263,7 +263,7 @@ class DynamicModel:
         print(f"parameter = {self.param_name}")
         print(f"output    = {self.output_name}")
         print("\nDimension Summary\n-----------------")
-        self.Fmodel.print_dimensions()
+        self.model_function.print_dimensions()
 
     def evaluate(self, *, state_num=list[float], input_num=None, param_num=None):
         """Numerical evaludation of the model."""
@@ -274,19 +274,19 @@ class DynamicModel:
 
         if _model_type["struct"] == "f(x,u)":
             if state_num is not None and input_num is not None and param_num is None:
-                (rhs_num, y_num) = self.Fmodel(state_num, input_num)
+                (rhs_num, y_num) = self.model_function(state_num, input_num)
             else:
                 raise ValueError(error_str)
 
         if _model_type["struct"] == "f(x)":
             if state_num is not None and input_num is None and param_num is None:
-                (rhs_num, y_num) = self.Fmodel(state_num)
+                (rhs_num, y_num) = self.model_function(state_num)
             else:
                 raise ValueError(error_str)
 
         if _model_type["struct"] == "f(x,p)":
             if state_num is not None and input_num is None and param_num is not None:
-                (rhs_num, y_num) = self.Fmodel(state_num, param_num)
+                (rhs_num, y_num) = self.model_function(state_num, param_num)
             else:
                 raise ValueError(error_str)
 
@@ -296,7 +296,7 @@ class DynamicModel:
                 and input_num is not None
                 and param_num is not None
             ):
-                (rhs_num, y_num) = self.Fmodel(state_num, input_num, param_num)
+                (rhs_num, y_num) = self.model_function(state_num, input_num, param_num)
             else:
                 raise ValueError(error_str)
 

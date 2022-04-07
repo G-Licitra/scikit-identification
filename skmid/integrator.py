@@ -58,10 +58,10 @@ class RungeKutta4:
 
         if self.__model_type["struct"] == "f(x,u)":
             # Build an RK4 integrator with param as symbolic variable
-            (k1, _) = self.model.Fmodel(x, u)
-            (k2, _) = self.model.Fmodel(x + __dt / 2.0 * k1, u)
-            (k3, _) = self.model.Fmodel(x + __dt / 2.0 * k2, u)
-            (k4, _) = self.model.Fmodel(x + __dt * k3, u)
+            (k1, _) = self.model.model_function(x, u)
+            (k2, _) = self.model.model_function(x + __dt / 2.0 * k1, u)
+            (k3, _) = self.model.model_function(x + __dt / 2.0 * k2, u)
+            (k4, _) = self.model.model_function(x + __dt * k3, u)
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
@@ -83,10 +83,10 @@ class RungeKutta4:
 
         elif self.__model_type["struct"] == "f(x)":
             # Build an RK4 integrator with param as symbolic variable
-            (k1, _) = self.model.Fmodel(x)
-            (k2, _) = self.model.Fmodel(x + __dt / 2.0 * k1)
-            (k3, _) = self.model.Fmodel(x + __dt / 2.0 * k2)
-            (k4, _) = self.model.Fmodel(x + __dt * k3)
+            (k1, _) = self.model.model_function(x)
+            (k2, _) = self.model.model_function(x + __dt / 2.0 * k1)
+            (k3, _) = self.model.model_function(x + __dt / 2.0 * k2)
+            (k4, _) = self.model.model_function(x + __dt * k3)
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
@@ -104,10 +104,10 @@ class RungeKutta4:
 
         elif self.__model_type["struct"] == "f(x,p)":
             # Build an RK4 integrator with param as symbolic variable
-            (k1, _) = self.model.Fmodel(x, param)
-            (k2, _) = self.model.Fmodel(x + __dt / 2.0 * k1, param)
-            (k3, _) = self.model.Fmodel(x + __dt / 2.0 * k2, param)
-            (k4, _) = self.model.Fmodel(x + __dt * k3, param)
+            (k1, _) = self.model.model_function(x, param)
+            (k2, _) = self.model.model_function(x + __dt / 2.0 * k1, param)
+            (k3, _) = self.model.model_function(x + __dt / 2.0 * k2, param)
+            (k4, _) = self.model.model_function(x + __dt * k3, param)
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
@@ -129,10 +129,10 @@ class RungeKutta4:
 
         elif self.__model_type["struct"] == "f(x,u,p)":
             # Build an RK4 integrator with param as symbolic variable
-            (k1, _) = self.model.Fmodel(x, u, param)
-            (k2, _) = self.model.Fmodel(x + __dt / 2.0 * k1, u, param)
-            (k3, _) = self.model.Fmodel(x + __dt / 2.0 * k2, u, param)
-            (k4, _) = self.model.Fmodel(x + __dt * k3, u, param)
+            (k1, _) = self.model.model_function(x, u, param)
+            (k2, _) = self.model.model_function(x + __dt / 2.0 * k1, u, param)
+            (k3, _) = self.model.model_function(x + __dt / 2.0 * k2, u, param)
+            (k4, _) = self.model.model_function(x + __dt * k3, u, param)
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
@@ -176,7 +176,7 @@ class RungeKutta4:
         all_samples = self.one_sample.mapaccum("x_simulation", N_steps)
 
         # Create propagation map y = g(x)
-        all_output = self.model.Fmodel.map(N_steps)
+        all_output = self.model.model_function.map(N_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
             x_sim = np.array(all_samples(x0, input.values.T))
