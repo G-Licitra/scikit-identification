@@ -5,24 +5,18 @@ import casadi as ca
 import pandas as pd
 
 
-def _infer_model_type(DynamicModel):
+def _infer_model_type(nx: Union[int, None], nu: Union[int, None], np: Union[int, None]):
     """Infer which inputs the model receives."""
 
     # CASE parameters are not specified
-    if (
-        DynamicModel.nx is not None
-        and DynamicModel.nu is not None
-        and DynamicModel.np is None
-    ):
+    if nx is not None and nu is not None and np is None:
         _model_type = {
             "struct": "f(x,u)",
             "model_input": ["x(t)", "u(t)"],
             "model_output": ["xdot(t) = f(x(t), u(t))", "y(t) = g(x(t))"],
         }
     elif (
-        DynamicModel.nx is not None
-        and DynamicModel.nu is None
-        and DynamicModel.np is None
+        nx is not None and nu is None and np is None
     ):  # CASE parameters AND input are not specified
         _model_type = {
             "struct": "f(x)",
@@ -30,9 +24,7 @@ def _infer_model_type(DynamicModel):
             "model_output": ["xdot(t) = f(x(t))", "y(t) = g(x(t))"],
         }
     elif (
-        DynamicModel.nx is not None
-        and DynamicModel.nu is None
-        and DynamicModel.np is not None
+        nx is not None and nu is None and np is not None
     ):  # CASE input are not specified
         _model_type = {
             "struct": "f(x,p)",
@@ -206,21 +198,28 @@ class DynamicModel:
         self.states = states
         self.inputs = inputs
         self.param = param
-        self.model_dynamics = ca.vcat(model_dynamics)
-        # if output y(t) is not specified, then set y = x(t)
-        self.output = states if output == None else ca.vcat(output)
+
+        if isinstance(model_dynamics, list):
+            self.model_dynamics = ca.vcat(model_dynamics)
+        else:
+            raise ValueError("model_dynamics must be a list of casadi.MX")
+
+        if isinstance(output, list) or output is None:
+            self.output = states if output == None else ca.vcat(output)
+        else:
+            raise ValueError("output must be a list of casadi.MX")
 
         # get dimentions
-        self.nx = states.shape[0]  # different states
-        self.nu = None if inputs == None else inputs.shape[0]  # control input
-        self.np = None if param == None else param.shape[0]  # model parameters
-        self.ny = self.nx if output == None else len(output)  # model output
+        self.__nx = states.shape[0]  # different states
+        self.__nu = None if inputs == None else inputs.shape[0]  # control input
+        self.__np = None if param == None else param.shape[0]  # model parameters
+        self.__ny = self.__nx if output == None else len(output)  # model output
 
         self.__match_attributes(state_name, input_name, param_name, output_name)
 
         self.__check_attribute_consistency()
 
-        _model_type = _infer_model_type(self)
+        _model_type = _infer_model_type(nx=self.__nx, nu=self.__nu, np=self.__np)
 
         # Construct Symbolic Dynamic Model
         if _model_type["struct"] == "f(x,u)":
@@ -266,13 +265,12 @@ class DynamicModel:
         print("\nDimension Summary\n-----------------")
         self.Fmodel.print_dimensions()
 
-    # TODO: replace x, y, param with state_num, input_num, param_num
     def evaluate(self, *, state_num=list[float], input_num=None, param_num=None):
         """Numerical evaludation of the model."""
 
         error_str = """Input mishmatch. Please check that the inputs are consistent with class attributes."""
 
-        _model_type = _infer_model_type(self)
+        _model_type = _infer_model_type(nx=self.__nx, nu=self.__nu, np=self.__np)
 
         if _model_type["struct"] == "f(x,u)":
             if state_num is not None and input_num is not None and param_num is None:
@@ -313,23 +311,23 @@ class DynamicModel:
     def __match_attributes(self, state_name, input_name, param_name, output_name):
         """Assign names to attributes, if specified"""
         self.state_name = (
-            ["x" + str(i + 1) for i in range(self.nx)]
+            ["x" + str(i + 1) for i in range(self.__nx)]
             if state_name is None
             else state_name
         )
 
-        if self.nu != None:
+        if self.__nu != None:
             self.input_name = (
-                ["u" + str(i + 1) for i in range(self.nu)]
+                ["u" + str(i + 1) for i in range(self.__nu)]
                 if input_name is None
                 else input_name
             )
         else:
             self.input_name = None
 
-        if self.np != None:
+        if self.__np != None:
             self.param_name = (
-                ["p" + str(i + 1) for i in range(self.np)]
+                ["p" + str(i + 1) for i in range(self.__np)]
                 if param_name is None
                 else param_name
             )
@@ -337,34 +335,35 @@ class DynamicModel:
             self.param_name = None
 
         self.output_name = (
-            ["y" + str(i + 1) for i in range(self.ny)]
+            ["y" + str(i + 1) for i in range(self.__ny)]
             if output_name is None
             else output_name
         )
 
     def __check_attribute_consistency(self):
         """Check if Input class are consistent"""
-        if self.nx != self.model_dynamics.size()[0]:
+        if self.__nx != self.model_dynamics.size()[0]:
+            # case dim(states) != dim(rhs)
             raise ValueError(
                 "Input class is not consistent. states and model_dynamics must have the same dimension."
             )
 
-        if self.nx != len(self.state_name):
+        if self.__nx != len(self.state_name):
             raise ValueError(
                 "Input class is not consistent. state and state_name must have the same dimension."
             )
 
-        if (self.nu is not None) and self.nu != len(self.input_name):
+        if (self.__nu is not None) and self.__nu != len(self.input_name):
             raise ValueError(
                 "Input class is not consistent. state and state_name must have the same dimension."
             )
 
-        if (self.np is not None) and (self.np != len(self.param_name)):
+        if (self.__np is not None) and (self.__np != len(self.param_name)):
             raise ValueError(
                 "Input class is not consistent. param and param_name must have the same dimension."
             )
 
-        if self.ny != len(self.output_name):
+        if self.__ny != len(self.output_name):
             raise ValueError(
                 "Input class is not consistent. output and output_name must have the same dimension."
             )

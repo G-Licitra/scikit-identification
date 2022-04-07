@@ -45,11 +45,16 @@ class RungeKutta4:
         __dt = 1 / fs / __N_steps_per_sample
         self.fs = fs  # frequency sample
         self.model = model
-        self.__model_type = _infer_model_type(self.model)
 
         x = model.states
         u = model.inputs
         param = model.param
+
+        # infer model architecture
+        nx = len(model.state_name)
+        nu = len(model.input_name) if model.input_name is not None else None
+        np = len(model.param_name) if model.param_name is not None else None
+        self.__model_type = _infer_model_type(nx=nx, nu=nu, np=np)
 
         if self.__model_type["struct"] == "f(x,u)":
             # Build an RK4 integrator with param as symbolic variable
@@ -90,7 +95,7 @@ class RungeKutta4:
             # Carry out forward simulation within the entire sample time
             X = x
             for i in range(__N_steps_per_sample):
-                X = one_step(X, u)
+                X = one_step(X)
 
             # Create a function that simulates all step propagation on a sample
             self.one_sample = ca.Function(
@@ -149,12 +154,14 @@ class RungeKutta4:
         else:
             raise ValueError("Model type not supported")
 
-    def simulate(self, *, x0, input=None, param=None, N_steps=None):
+    def simulate(self, *, x0, input=None, param=None, N_steps=100):
+
+        self.time_ = np.linspace(
+            start=0, stop=(N_steps) * (1 / self.fs), num=N_steps + 1
+        )
 
         if input is not None:
             (input, N_steps) = self.__validate_input(input)
-        else:
-            N_steps = 100  # default value if input is not provided
 
         # TODO input flexible for pd and np,  nd
         # derive N_steps.
@@ -189,14 +196,14 @@ class RungeKutta4:
         # pack differential state x attaching initial condition x0
         self.x_sim_ = pd.DataFrame(
             data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
-            index=input.index.append(pd.Index([input.index[-1] + 1 / self.fs])),
+            index=self.time_,
             columns=self.model.state_name,
         )
 
         # pack output in dataframe
         self.y_sim_ = pd.DataFrame(
             data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
-            index=input.index.append(pd.Index([input.index[-1] + 1 / self.fs])),
+            index=self.time_,
             columns=self.model.state_name,
         )
 
@@ -211,18 +218,17 @@ class RungeKutta4:
             # convert input to pandas dataframe
             input = pd.DataFrame(
                 data=input,
-                index=np.linspace(0, (N_steps - 1) * (1 / self.fs), N_steps),
+                index=self.time_,
             )
 
         if isinstance(input, pd.DataFrame):  # check if input is a dataframe
 
-            if input.shape[1] == 1:
-                # Check if input is a series
+            if isinstance(input, pd.Series):  # check if input is a series
                 input = input.to_frame()
 
             if np.mean(np.diff(input.index)) != 1 / self.fs:
                 # Detect sample frequency mismatch
-                input.index = np.linspace(0, (N_steps - 1) * (1 / self.fs), N_steps)
+                input.index = self.time_
                 warnings.warn(
                     f"""The input index has a different fs than specified in the object.
                                   The input index has been modified by using fs={self.fs} Hz.
@@ -240,7 +246,7 @@ class RungeKutta4:
 
             input = pd.DataFrame(
                 data=input.values,
-                index=np.linspace(0, (N_steps - 1) * (1 / self.fs), N_steps),
+                index=self.time_,
             )
 
             return (input, N_steps)

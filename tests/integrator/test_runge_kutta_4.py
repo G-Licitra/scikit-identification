@@ -32,29 +32,42 @@ def generate_input_signal():
 class TestRungeKutta4:
     """Test class for function generate_model_parameters."""
 
+    def test_model_with_states(self, generate_input_signal):
+        """Test simulation with model dx=f(x)."""
+        pass
+
+    def test_model_with_states_input(self, generate_input_signal):
+        """Test simulation with model dx=f(x,u)."""
+        pass
+
+    def test_model_with_states_input(self, generate_input_signal):
+        """Test simulation with model dx=f(x,p)."""
+        pass
+
     def test_model_with_states_inputs_param(self, generate_input_signal):
-        """Test output size for different scenarios"""
+        """Test simulation with model dx=f(x,u,p)."""
+        pass
 
-        (df_input, fs) = generate_input_signal
+        # (df_input, fs) = generate_input_signal
 
-        (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+        # (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
 
-        # assign specific name
-        x1, x2 = x[0], x[1]
-        u1, u2 = u[0], u[1]
-        ka, kb = param[0], param[1]
+        # # assign specific name
+        # x1, x2 = x[0], x[1]
+        # u1, u2 = u[0], u[1]
+        # ka, kb = param[0], param[1]
 
-        param_truth = [0.1, 0.5]  # ca.DM([0.1, 0.5])
+        # param_truth = [0.1, 0.5]  # ca.DM([0.1, 0.5])
 
-        # xdot = f(x,u,p) <==> rhs = f(x,u,p)
-        rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
+        # # xdot = f(x,u,p) <==> rhs = f(x,u,p)
+        # rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
 
-        sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
+        # sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 
-        # #%%
-        rk4 = RungeKutta4(model=sys, fs=fs)
+        # # #%%
+        # rk4 = RungeKutta4(model=sys, fs=fs)
 
-        # #%%
-        rk4.simulate(x0=[-1, 1], input=df_input, param=param_truth)
+        # # #%%
+        # rk4.simulate(x0=[-1, 1], input=df_input, param=param_truth)
 
-        rk4.x_sim_
+        # rk4.x_sim_

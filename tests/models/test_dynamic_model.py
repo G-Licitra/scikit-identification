@@ -9,9 +9,23 @@ from skmid.models import generate_model_parameters
 
 
 class TestDynamicModel:
-    """Test class for function correlation_analysis."""
+    """Test class DynamicModel"""
 
-    def test_check_attribute_consistency(self):
+    def test_instance_type(self):
+        """Check if function returns a pandas Series."""
+        (x, u, param) = generate_model_parameters(nx=2, nu=1, nparam=1)
+
+        model = DynamicModel(
+            states=x,
+            inputs=u,
+            param=param,
+            model_dynamics=[param * x[0] + u, x[1]],
+            output=[x**2],
+        )
+
+        assert isinstance(model, DynamicModel)
+
+    def test_check_attribute_inconsistency(self):
         """Test whether error are raised when inputs are inconsistent."""
 
         (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
@@ -58,6 +72,25 @@ class TestDynamicModel:
         with pytest.raises(ValueError):
             model = DynamicModel(
                 states=x, inputs=u, param=param, model_dynamics=rhs, output_name=["y1"]
+            )
+
+        # Case model_dynamics is not a list
+        with pytest.raises(ValueError):
+            model = DynamicModel(
+                states=x[0],
+                inputs=u[0],
+                param=param[0],
+                model_dynamics=param[0] * x[0] ** 2 + u[0],
+            )
+
+        # Case output is not a list
+        with pytest.raises(ValueError):
+            model = DynamicModel(
+                states=x[0],
+                inputs=u[0],
+                param=param[0],
+                model_dynamics=[param[0] * x[0] ** 2 + u[0]],
+                output=x[0] ** 2,
             )
 
     def test_output(self):
