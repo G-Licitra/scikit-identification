@@ -47,9 +47,7 @@ def lotka_volterra():
 
     _ = rk4.simulate(x0=[0.9, 1.8], param=param_val, N_steps=1000)
 
-    df_sim = rk4.x_sim_
-
-    df_sim.plot(x="x", y="y", title="Lotka-Volterra")
+    # rk4.x_sim_.plot(x="x", y="y", title="Lotka-Volterra")
 
     description = (
         "Van der Pol oscillator: non-conservative oscillator with non-linear damping."
@@ -62,8 +60,9 @@ def lotka_volterra():
     )
 
     return {
-        "state_sim": df_sim,
         "input_sim": None,
+        "state_sim": rk4.x_sim_,
+        "output_sim": rk4.y_sim_,
         "model_function": model,
         "description": description,
     }
@@ -107,8 +106,9 @@ def van_der_pol_oscillator():
     )
 
     return {
-        "state_sim": df_sim,
         "input_sim": None,
+        "state_sim": rk4.x_sim_,
+        "output_sim": rk4.y_sim_,
         "model_function": model,
         "description": description,
     }
@@ -146,8 +146,9 @@ def lorenz_system():
     )
 
     return {
-        "state_sim": df_sim,
         "input_sim": None,
+        "state_sim": rk4.x_sim_,
+        "output_sim": rk4.y_sim_,
         "model_function": model,
         "description": description,
     }
@@ -192,8 +193,9 @@ def chua_circuit():
     )
 
     return {
-        "state_sim": df_sim,
         "input_sim": None,
+        "state_sim": rk4.x_sim_,
+        "output_sim": rk4.y_sim_,
         "model_function": model,
         "description": description,
     }

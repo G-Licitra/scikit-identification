@@ -155,7 +155,7 @@ class RungeKutta4:
             raise ValueError("Model type not supported")
 
         # geate output map y = g(x)
-        # self.output_map = ca.Function("output_map", [x], [self.model.output])
+        self.output_map = ca.Function("output_map", [x], [self.model.output])
 
     def simulate(self, *, x0, input=None, param=None, N_steps=100):
 
@@ -196,11 +196,14 @@ class RungeKutta4:
             columns=self.model.state_name,
         )
 
+        output_propagation_map = self.output_map.map(N_steps + 1)
+
         # pack output in dataframe
-        # y_sim = pd.DataFrame()
-        # for k in range(0, len(self.x_sim_)):
-        #     y_sim = y_sim.append(self.model.evaluate(state_num=self.x_sim_.iloc[k, :].values, param_num=param)[1])
-        # self.y_sim_ = y_sim
+        self.y_sim_ = pd.DataFrame(
+            data=output_propagation_map(self.x_sim_.values.T).full().T,
+            index=self.time_,
+            columns=self.model.output_name,
+        )
 
     def __validate_input(self, input):
         """determine the type of input"""
