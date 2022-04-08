@@ -184,5 +184,7 @@ def lorenz_system():
 if __name__ == "__main__":
     """run for testing only"""
 
+    data = van_der_pol_oscillator()
+
     data = lorenz_system()
     print("Done!")

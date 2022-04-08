@@ -65,15 +65,15 @@ class RungeKutta4:
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
-            one_step = ca.Function("one_step", [x, u], [xf])
+            one_step_ahead = ca.Function("one_step", [x, u], [xf])
 
             # Carry out forward simulation within the entire sample time
             X = x
             for i in range(__N_steps_per_sample):
-                X = one_step(X, u)
+                X = one_step_ahead(X, u)
 
             # Create a function that simulates all step propagation on a sample
-            self.one_sample = ca.Function(
+            self.one_step_ahead = ca.Function(
                 "one_sample",
                 [x, u],
                 [X],
@@ -90,15 +90,15 @@ class RungeKutta4:
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
-            one_step = ca.Function("one_step", [x], [xf])
+            one_step_ahead = ca.Function("one_step", [x], [xf])
 
             # Carry out forward simulation within the entire sample time
             X = x
             for i in range(__N_steps_per_sample):
-                X = one_step(X)
+                X = one_step_ahead(X)
 
             # Create a function that simulates all step propagation on a sample
-            self.one_sample = ca.Function(
+            self.one_step_ahead = ca.Function(
                 "one_sample", [x], [X], ["x[k]"], ["x[k+1] = x[k] + __dt * f(x[k])"]
             )
 
@@ -111,15 +111,15 @@ class RungeKutta4:
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
-            one_step = ca.Function("one_step", [x, param], [xf])
+            one_step_ahead = ca.Function("one_step", [x, param], [xf])
 
             # Carry out forward simulation within the entire sample time
             X = x
             for i in range(__N_steps_per_sample):
-                X = one_step(X, param)
+                X = one_step_ahead(X, param)
 
             # Create a function that simulates all step propagation on a sample
-            self.one_sample = ca.Function(
+            self.one_step_ahead = ca.Function(
                 "one_sample",
                 [x, param],
                 [X],
@@ -136,15 +136,15 @@ class RungeKutta4:
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
-            one_step = ca.Function("one_step", [x, u, param], [xf])
+            one_step_ahead = ca.Function("one_step", [x, u, param], [xf])
 
             # Carry out forward simulation within the entire sample time
             X = x
             for i in range(__N_steps_per_sample):
-                X = one_step(X, u, param)
+                X = one_step_ahead(X, u, param)
 
             # Create a function that simulates all step propagation on a sample
-            self.one_sample = ca.Function(
+            self.one_step_ahead = ca.Function(
                 "one_sample",
                 [x, u, param],
                 [X],
@@ -173,20 +173,20 @@ class RungeKutta4:
         # time = np.concatenate([time.values.reshape(-1, 1), np.array(ts, ndmin=2)])
 
         # Propagate simulation for N steps and generate trajectory
-        all_samples = self.one_sample.mapaccum("x_simulation", N_steps)
+        k_step_ahead = self.one_step_ahead.mapaccum("x_simulation", N_steps)
 
         # Create propagation map y = g(x)
         all_output = self.model.model_function.map(N_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
-            x_sim = np.array(all_samples(x0, input.values.T))
+            x_sim = np.array(k_step_ahead(x0, input.values.T))
         elif self.__model_type["struct"] == "f(x)":
-            x_sim = np.array(all_samples(x0))
+            x_sim = np.array(k_step_ahead(x0))
         elif self.__model_type["struct"] == "f(x,p)":
-            x_sim = np.array(all_samples(x0, ca.repmat(param, 1, N_steps)))
+            x_sim = np.array(k_step_ahead(x0, ca.repmat(param, 1, N_steps)))
         elif self.__model_type["struct"] == "f(x,u,p)":
             x_sim = np.array(
-                all_samples(x0, input.values.T, ca.repmat(param, 1, N_steps))
+                k_step_ahead(x0, input.values.T, ca.repmat(param, 1, N_steps))
             )
 
             y_sim = np.array(
