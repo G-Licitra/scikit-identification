@@ -111,7 +111,7 @@ class RungeKutta4:
             xf = x + __dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
             # Create a function that simulates one step propagation in a sample
-            one_step_ahead = ca.Function("one_step", [x, param], [xf])
+            one_step_ahead = ca.Function("one_step_ahead", [x, param], [xf])
 
             # Carry out forward simulation within the entire sample time
             X = x
@@ -154,6 +154,9 @@ class RungeKutta4:
         else:
             raise ValueError("Model type not supported")
 
+        # geate output map y = g(x)
+        # self.output_map = ca.Function("output_map", [x], [self.model.output])
+
     def simulate(self, *, x0, input=None, param=None, N_steps=100):
 
         self.time_ = np.linspace(
@@ -175,9 +178,6 @@ class RungeKutta4:
         # Propagate simulation for N steps and generate trajectory
         k_step_ahead = self.one_step_ahead.mapaccum("x_simulation", N_steps)
 
-        # Create propagation map y = g(x)
-        all_output = self.model.model_function.map(N_steps)
-
         if self.__model_type["struct"] == "f(x,u)":
             x_sim = np.array(k_step_ahead(x0, input.values.T))
         elif self.__model_type["struct"] == "f(x)":
@@ -189,10 +189,6 @@ class RungeKutta4:
                 k_step_ahead(x0, input.values.T, ca.repmat(param, 1, N_steps))
             )
 
-            y_sim = np.array(
-                all_output(x_sim, input.values.T, ca.repmat(param, 1, N_steps))
-            )
-
         # pack differential state x attaching initial condition x0
         self.x_sim_ = pd.DataFrame(
             data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
@@ -201,11 +197,10 @@ class RungeKutta4:
         )
 
         # pack output in dataframe
-        self.y_sim_ = pd.DataFrame(
-            data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
-            index=self.time_,
-            columns=self.model.state_name,
-        )
+        # y_sim = pd.DataFrame()
+        # for k in range(0, len(self.x_sim_)):
+        #     y_sim = y_sim.append(self.model.evaluate(state_num=self.x_sim_.iloc[k, :].values, param_num=param)[1])
+        # self.y_sim_ = y_sim
 
     def __validate_input(self, input):
         """determine the type of input"""

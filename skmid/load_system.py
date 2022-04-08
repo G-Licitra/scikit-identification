@@ -204,10 +204,10 @@ if __name__ == "__main__":
 
     data = lotka_volterra()
 
-    # data = van_der_pol_oscillator()
+    data = van_der_pol_oscillator()
 
-    # data = lorenz_system()
+    data = lorenz_system()
 
-    # data = chua_circuit()
+    data = chua_circuit()
 
     print("Done!")
