@@ -41,13 +41,13 @@ def _infer_model_type(nx: Union[int, None], nu: Union[int, None], np: Union[int,
 
 
 def generate_model_parameters(
-    nx: int, nu: Union[int, None] = None, nparam: Union[int, None] = None
+    nstate: int, ninput: Union[int, None] = None, nparam: Union[int, None] = None
 ):
     """Generate casADi symbol parameters.
 
     Args:
-        nx (int): The dimension of the differential state vector
-        nu (int): The dimension of the control input vector
+        nstate (int): The dimension of the differential state vector
+        ninput (int): The dimension of the control input vector
         nparam (Union[str, None], optional): parameter. The dimension of the parameter vector. Defaults to None.
 
     Returns:
@@ -59,12 +59,12 @@ def generate_model_parameters(
     >>> (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
     """
 
-    if nx == 0:
+    if nstate == 0:
         raise ValueError("nx must be >= 1")
     else:
-        x = ca.MX.sym("x", nx)
+        x = ca.MX.sym("x", nstate)
 
-    u = None if (nu == None) or (nu == 0) else ca.MX.sym("u", nu)
+    u = None if (ninput == None) or (ninput == 0) else ca.MX.sym("u", ninput)
     param = None if (nparam == None) or (nparam == 0) else ca.MX.sym("param", nparam)
     return (x, u, param)
 
@@ -392,7 +392,7 @@ class DynamicModel:
 
 if __name__ == "__main__":  # when run for testing only
 
-    (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+    (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
 
     # assign specific name
     x1, x2 = x[0], x[1]
@@ -412,7 +412,9 @@ if __name__ == "__main__":  # when run for testing only
 
     sys.print_summary()
 
-    rhs_num, y_num = sys.evaluate(x_test, u_test, theta_test)
+    rhs_num, y_num = sys.evaluate(
+        state_num=x_test, input_num=u_test, param_num=theta_test
+    )
 
     print(f"rhs = {rhs_num}, \ny = {y_num}")
 

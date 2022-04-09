@@ -196,6 +196,7 @@ class RungeKutta4:
             columns=self.model.state_name,
         )
 
+        # map state with output for N steps
         output_propagation_map = self.output_map.map(N_steps + 1)
 
         # pack output in dataframe
@@ -272,7 +273,7 @@ if __name__ == "__main__":  # when run for testing only
 
     #%%----------------------------------------------------------------
 
-    (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+    (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
 
     # assign specific name
     x1, x2 = x[0], x[1]

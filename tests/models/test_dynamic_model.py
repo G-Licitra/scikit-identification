@@ -13,7 +13,7 @@ class TestDynamicModel:
 
     def test_instance_type(self):
         """Check if function returns a pandas Series."""
-        (x, u, param) = generate_model_parameters(nx=2, nu=1, nparam=1)
+        (x, u, param) = generate_model_parameters(nstate=2, ninput=1, nparam=1)
 
         model = DynamicModel(
             states=x,
@@ -28,7 +28,7 @@ class TestDynamicModel:
     def test_check_attribute_inconsistency(self):
         """Test whether error are raised when inputs are inconsistent."""
 
-        (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+        (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
 
         # assign specific name
         x1, x2 = x[0], x[1]
@@ -96,7 +96,7 @@ class TestDynamicModel:
     def test_output(self):
         """Test output under several case scenarios."""
 
-        (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+        (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
 
         # assign specific name
         x1, x2 = x[0], x[1]
