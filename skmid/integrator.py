@@ -159,21 +159,26 @@ class RungeKutta4:
 
     def simulate(self, *, x0, input=None, param=None, N_steps=100):
 
-        self.time_ = np.linspace(
-            start=0, stop=(N_steps) * (1 / self.fs), num=N_steps + 1
-        )
-
         if input is not None:
-            (input, N_steps) = self.__validate_input(input)
+            # time vector for simulation x_sim and y_sim
+            self.time_ = np.linspace(
+                start=0, stop=(len(input)) * (1 / self.fs), num=len(input) + 1
+            )
 
-        # TODO input flexible for pd and np,  nd
-        # derive N_steps.
-        # N_steps = len(input)
+            # if input is provided neglect n_steps prameter
+            input = self.__validate_input(input)
+            self.input_ = input
 
-        # # get time and attach one extra sample to time
-        # time = input.index
-        # ts = time[-1] + (time[1] - time[0])  # sample time
-        # time = np.concatenate([time.values.reshape(-1, 1), np.array(ts, ndmin=2)])
+            # map state with output for N steps
+            output_propagation_map = self.output_map.map(len(input) + 1)
+
+        else:
+            # time vector for simulation x_sim and y_sim
+            self.time_ = np.linspace(
+                start=0, stop=(N_steps) * (1 / self.fs), num=N_steps + 1
+            )
+            # map state with output for N steps
+            output_propagation_map = self.output_map.map(N_steps + 1)
 
         # Propagate simulation for N steps and generate trajectory
         k_step_ahead = self.one_step_ahead.mapaccum("x_simulation", N_steps)
@@ -190,18 +195,15 @@ class RungeKutta4:
             )
 
         # pack differential state x attaching initial condition x0
-        self.x_sim_ = pd.DataFrame(
+        self.state_sim_ = pd.DataFrame(
             data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
             index=self.time_,
             columns=self.model.state_name,
         )
 
-        # map state with output for N steps
-        output_propagation_map = self.output_map.map(N_steps + 1)
-
         # pack output in dataframe
-        self.y_sim_ = pd.DataFrame(
-            data=output_propagation_map(self.x_sim_.values.T).full().T,
+        self.output_sim_ = pd.DataFrame(
+            data=output_propagation_map(self.state_sim_.values.T).full().T,
             index=self.time_,
             columns=self.model.output_name,
         )
@@ -209,15 +211,11 @@ class RungeKutta4:
     def __validate_input(self, input):
         """determine the type of input"""
 
-        # check dimension of input and param
-        N_steps = len(input)
-
         # get time and attach one extra sample to time
         if isinstance(input, np.ndarray):
             # convert input to pandas dataframe
             input = pd.DataFrame(
-                data=input,
-                index=self.time_,
+                data=input, index=self.time_[:-1], columns=self.model.input_name
             )
 
         if isinstance(input, pd.DataFrame):  # check if input is a dataframe
@@ -227,7 +225,7 @@ class RungeKutta4:
 
             if np.mean(np.diff(input.index)) != 1 / self.fs:
                 # Detect sample frequency mismatch
-                input.index = self.time_
+                input.index = self.time_[:-1]
                 warnings.warn(
                     f"""The input index has a different fs than specified in the object.
                                   The input index has been modified by using fs={self.fs} Hz.
@@ -243,12 +241,7 @@ class RungeKutta4:
                 )
                 input.columns = self.model.input_name
 
-            input = pd.DataFrame(
-                data=input.values,
-                index=self.time_,
-            )
-
-            return (input, N_steps)
+            return input
 
 
 if __name__ == "__main__":  # when run for testing only

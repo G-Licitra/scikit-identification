@@ -245,11 +245,15 @@ def magnetic_levitation_system():
     print(f"rhs = {rhs_num}, \ny = {y_num}")
 
     # invoke integrator
-    rk4 = RungeKutta4(model=model, fs=50)
+    rk4 = RungeKutta4(model=model, fs=100)
 
-    _ = rk4.simulate(x0=xeq, input=ueq * np.ones((100, 1)))
+    # input test
+    # input = ueq * np.ones((100, 1))
+    input = (
+        ueq * np.ones((1, 100)) + 3 * np.sin(2 * np.pi * 1 * np.linspace(0, 1, 100))
+    ).T
 
-    df_sim = rk4.x_sim_
+    _ = rk4.simulate(x0=xeq, input=input)
 
     description = (
         "Lorenz attractor: The equations relate the properties of a two-dimensional fluid layer uniformly warmed from below and cooled from above. "
@@ -263,9 +267,10 @@ def magnetic_levitation_system():
     )
 
     return {
-        "input_sim": None,
-        "state_sim": rk4.x_sim_,
-        "output_sim": rk4.y_sim_,
+        "time": rk4.time_,
+        "input_vector": rk4.input_,
+        "state_simulation": rk4.state_sim_,
+        "output_simulation": rk4.output_sim_,
         "model_function": model,
         "description": description,
     }

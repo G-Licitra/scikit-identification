@@ -10,7 +10,7 @@ from skmid.models import generate_model_parameters
 
 np.random.seed(42)
 
-
+# test f(x,u) with multiple input, multiple size, list
 @pytest.fixture
 def generate_input_signal():
     """Generate input signal"""
