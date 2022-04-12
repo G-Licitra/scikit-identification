@@ -38,11 +38,11 @@ class RungeKutta4:
 
     """
 
-    def __init__(self, *, model: DynamicModel, fs: int = 1):
+    def __init__(
+        self, *, model: DynamicModel, fs: int = 1, n_steps_per_sample: int = 1
+    ):
 
-        __N_steps_per_sample: int = 1
-
-        __dt = 1 / fs / __N_steps_per_sample
+        __dt = 1 / fs / n_steps_per_sample
         self.fs = fs  # frequency sample
         self.model = model
 
@@ -69,7 +69,7 @@ class RungeKutta4:
 
             # Carry out forward simulation within the entire sample time
             X = x
-            for i in range(__N_steps_per_sample):
+            for i in range(n_steps_per_sample):
                 X = one_step_ahead(X, u)
 
             # Create a function that simulates all step propagation on a sample
@@ -94,7 +94,7 @@ class RungeKutta4:
 
             # Carry out forward simulation within the entire sample time
             X = x
-            for i in range(__N_steps_per_sample):
+            for i in range(n_steps_per_sample):
                 X = one_step_ahead(X)
 
             # Create a function that simulates all step propagation on a sample
@@ -115,7 +115,7 @@ class RungeKutta4:
 
             # Carry out forward simulation within the entire sample time
             X = x
-            for i in range(__N_steps_per_sample):
+            for i in range(n_steps_per_sample):
                 X = one_step_ahead(X, param)
 
             # Create a function that simulates all step propagation on a sample
@@ -140,7 +140,7 @@ class RungeKutta4:
 
             # Carry out forward simulation within the entire sample time
             X = x
-            for i in range(__N_steps_per_sample):
+            for i in range(n_steps_per_sample):
                 X = one_step_ahead(X, u, param)
 
             # Create a function that simulates all step propagation on a sample
@@ -160,53 +160,74 @@ class RungeKutta4:
     def simulate(self, *, x0, input=None, param=None, N_steps=100):
 
         if input is not None:
+
+            N_steps = len(input)  # overwrite N_steps
+
             # time vector for simulation x_sim and y_sim
             self.time_ = np.linspace(
-                start=0, stop=(len(input)) * (1 / self.fs), num=len(input) + 1
+                start=0, stop=(N_steps) * (1 / self.fs), num=N_steps + 1
             )
 
             # if input is provided neglect n_steps prameter
             input = self.__validate_input(input)
             self.input_ = input
 
-            # map state with output for N steps
-            output_propagation_map = self.output_map.map(len(input) + 1)
-
         else:
             # time vector for simulation x_sim and y_sim
             self.time_ = np.linspace(
                 start=0, stop=(N_steps) * (1 / self.fs), num=N_steps + 1
             )
-            # map state with output for N steps
-            output_propagation_map = self.output_map.map(N_steps + 1)
 
         # Propagate simulation for N steps and generate trajectory
         k_step_ahead = self.one_step_ahead.mapaccum("x_simulation", N_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
-            x_sim = np.array(k_step_ahead(x0, input.values.T))
+            x_sim = k_step_ahead(x0, input.values.T)
         elif self.__model_type["struct"] == "f(x)":
-            x_sim = np.array(k_step_ahead(x0))
+            x_sim = k_step_ahead(x0)
         elif self.__model_type["struct"] == "f(x,p)":
-            x_sim = np.array(k_step_ahead(x0, ca.repmat(param, 1, N_steps)))
+            x_sim = k_step_ahead(x0, ca.repmat(param, 1, N_steps))
         elif self.__model_type["struct"] == "f(x,u,p)":
-            x_sim = np.array(
-                k_step_ahead(x0, input.values.T, ca.repmat(param, 1, N_steps))
+            x_sim = k_step_ahead(x0, input.values.T, ca.repmat(param, 1, N_steps))
+
+        # check if forward simulation is numeric or symbolic
+        if isinstance(x_sim, ca.casadi.MX):
+
+            # first check that all output are contained in
+            # TODO: change the output_name to match state_name
+
+            # output_propagation_map = self.output_map.map(N_steps)
+            output_map = dict()
+
+            for i in range(0, len(self.model.state_name)):
+                if self.model.state_name[i] in self.model.output_name:
+                    output_map[self.model.state_name[i]] = i
+
+            self.state_sim_ = x_sim
+            # output_propagation_map(x_sim)
+            # self.output_sim_ = output_propagation_map(x_sim)
+            # map state with output for N steps
+            self.output_sim_ = None
+
+        else:
+            # forward simulation is numeric
+            x_sim = np.array(x_sim)
+            # map state with output for N_steps + 1 (include x0 mapping)
+            output_propagation_map = self.output_map.map(N_steps + 1)
+
+            # pack differential state x attaching initial condition x0
+            self.state_sim_ = pd.DataFrame(
+                data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
+                index=self.time_,
+                columns=self.model.state_name,
             )
 
-        # pack differential state x attaching initial condition x0
-        self.state_sim_ = pd.DataFrame(
-            data=np.concatenate([np.array(x0).reshape(1, -1), x_sim.T]),
-            index=self.time_,
-            columns=self.model.state_name,
-        )
-
-        # pack output in dataframe
-        self.output_sim_ = pd.DataFrame(
-            data=output_propagation_map(self.state_sim_.values.T).full().T,
-            index=self.time_,
-            columns=self.model.output_name,
-        )
+            # pack output in dataframe
+            self.output_sim_ = pd.DataFrame(
+                data=output_propagation_map(self.state_sim_.values.T).full().T,
+                index=self.time_,
+                columns=self.model.output_name,
+            )
 
     def __validate_input(self, input):
         """determine the type of input"""
