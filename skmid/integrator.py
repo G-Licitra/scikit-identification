@@ -1,4 +1,4 @@
-#%%
+# %%
 import warnings
 
 import casadi as ca
@@ -13,7 +13,7 @@ class RungeKutta4:
     r"""Create Explicit Runge Kutta order 4 integrator`
 
     Parameters
-    ---------
+    ----------
     ode : casadi.Function
         Function which define the model via ODE, formally,
         f: (x, u, theta) -> rhs.
@@ -30,7 +30,7 @@ class RungeKutta4:
         number of integration steps
 
     Returns
-    ---------
+    -------
     one_sample : casadi.Function
         One step forward model integrator
     all_sample : casadi.Function
@@ -99,7 +99,8 @@ class RungeKutta4:
 
             # Create a function that simulates all step propagation on a sample
             self.one_step_ahead = ca.Function(
-                "one_sample", [x], [X], ["x[k]"], ["x[k+1] = x[k] + __dt * f(x[k])"]
+                "one_sample", [x], [X], ["x[k]"],
+                ["x[k+1] = x[k] + __dt * f(x[k])"]
             )
 
         elif self.__model_type["struct"] == "f(x,p)":
@@ -215,7 +216,8 @@ class RungeKutta4:
         if isinstance(input, np.ndarray):
             # convert input to pandas dataframe
             input = pd.DataFrame(
-                data=input, index=self.time_[:-1], columns=self.model.input_name
+                data=input, index=self.time_[:-1],
+                columns=self.model.input_name
             )
 
         if isinstance(input, pd.DataFrame):  # check if input is a dataframe
@@ -227,8 +229,10 @@ class RungeKutta4:
                 # Detect sample frequency mismatch
                 input.index = self.time_[:-1]
                 warnings.warn(
-                    f"""The input index has a different fs than specified in the object.
-                                  The input index has been modified by using fs={self.fs} Hz.
+                    f"""The input index has a different fs
+                    than specified in the object.
+                                  The input index has been
+                                  modified by using fs={self.fs} Hz.
                                 """
                 )
 
@@ -236,7 +240,8 @@ class RungeKutta4:
                 # Detect input name mismatch
                 warnings.warn(
                     f"""The input names is not consistent with the model input.
-                                        the simulation has considered the input as if they were {self.model.input_name}.
+                                        the simulation has considered the input
+                                        as if they were {self.model.input_name}.
                                      """
                 )
                 input.columns = self.model.input_name
@@ -264,7 +269,7 @@ if __name__ == "__main__":  # when run for testing only
 
     x0 = [1, -1]  # Initial Condition x0 = [0;0]; [nx = 2]
 
-    #%%----------------------------------------------------------------
+    # %%----------------------------------------------------------------
 
     (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
 

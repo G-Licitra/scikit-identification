@@ -54,7 +54,7 @@ def generate_model_parameters(
         (x, u, param): the symbolic state, control input and parameter vector, respectively.
 
     Examples
-    ----------
+    --------
     >>> from skmid.models import generate_model_parameters
     >>> (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
     """
@@ -64,8 +64,8 @@ def generate_model_parameters(
     else:
         x = ca.MX.sym("x", nstate)
 
-    u = None if (ninput == None) or (ninput == 0) else ca.MX.sym("u", ninput)
-    param = None if (nparam == None) or (nparam == 0) else ca.MX.sym("param", nparam)
+    u = None if (ninput is None) or (ninput == 0) else ca.MX.sym("u", ninput)
+    param = None if (nparam is None) or (nparam == 0) else ca.MX.sym("param", nparam)
     return (x, u, param)
 
 
@@ -111,7 +111,7 @@ class DynamicModel:
 
 
     Examples
-    ---------
+    --------
     Construct simple dynamic model with one differential state, one input.
 
     >>> (x, u, _) = generate_model_parameters(nx=1, nu=1)
@@ -205,15 +205,15 @@ class DynamicModel:
             raise ValueError("model_dynamics must be a list of casadi.MX")
 
         if isinstance(output, list) or output is None:
-            self.output = states if output == None else ca.vcat(output)
+            self.output = states if output is None else ca.vcat(output)
         else:
             raise ValueError("output must be a list of casadi.MX")
 
         # get dimentions
         self.__nx = states.shape[0]  # different states
-        self.__nu = None if inputs == None else inputs.shape[0]  # control input
-        self.__np = None if param == None else param.shape[0]  # model parameters
-        self.__ny = self.__nx if output == None else len(output)  # model output
+        self.__nu = None if inputs is None else inputs.shape[0]  # control input
+        self.__np = None if param is None else param.shape[0]  # model parameters
+        self.__ny = self.__nx if output is None else len(output)  # model output
 
         self.__match_attributes(state_name, input_name, param_name, output_name)
 
@@ -316,7 +316,7 @@ class DynamicModel:
             else state_name
         )
 
-        if self.__nu != None:
+        if self.__nu is not None:
             self.input_name = (
                 ["u" + str(i + 1) for i in range(self.__nu)]
                 if input_name is None
@@ -325,7 +325,7 @@ class DynamicModel:
         else:
             self.input_name = None
 
-        if self.__np != None:
+        if self.__np is not None:
             self.param_name = (
                 ["p" + str(i + 1) for i in range(self.__np)]
                 if param_name is None
@@ -402,7 +402,7 @@ if __name__ == "__main__":  # when run for testing only
     # xdot = f(x,u,p) <==> rhs = f(x,u,p)
     rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
 
-    #%%
+    # %%
     sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
 
     # numerical evaluation ===================================================
