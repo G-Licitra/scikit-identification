@@ -10,9 +10,9 @@ from skmid.models import generate_model_parameters
 N = 10000  # Number of samples
 fs = 610.1  # Sampling frequency [hz]
 
-param_truth = ca.DM([5.625e-6, 2.3e-4, 1, 4.69])
-param_guess = ca.DM([5, 2, 1, 5])
-scale = ca.vertcat(1e-6, 1e-4, 1, 1)
+param_truth = [5.625e-6, 2.3e-4, 1, 4.69]
+param_guess = [5, 2, 1, 5]
+scale = [1e-6, 1e-4, 1, 1]
 
 ############ MODELING #####################
 

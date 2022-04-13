@@ -58,7 +58,7 @@ def gauss_newton(e, nlp, V):
     )
 
 
-class EquationErrorMethod:
+class LeastSquaresRegression:
     def __init__(self, *, model: DynamicModel, fs: int = 1):
         pass
 
