@@ -19,22 +19,10 @@ scale = ca.vertcat(1e-6, 1e-4, 1, 1)
 (state, input, param) = generate_model_parameters(nstate=2, ninput=1, nparam=4)
 
 
-# rhs = [-alpha * x[0] + p[0] * x[0] * x[1], gamma * x[1] - p[1] * x[0] * x[1
-#                                                                           ]]
-
-
 y, dy = state[0], state[1]
-
 u = input[0]
 
 M, c, k, k_NL = param[0], param[1], param[2], param[3]
-
-# M = ca.MX.sym("x")
-# c = ca.MX.sym("c")
-# k = ca.MX.sym("k")
-# k_NL = ca.MX.sym("k_NL")
-
-# params = ca.vertcat(M, c, k, k_NL)
 
 rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
 
@@ -54,10 +42,7 @@ rhs_num, y_num = model.evaluate(
 print(f"rhs = {rhs_num}, \ny = {y_num}")
 
 
-# Form an ode function
-# ode = ca.Function("ode", [states, controls, params], [rhs])
-
-############ Creating a simulator ##########
+########### Creating a simulator ##########
 N_steps_per_sample = 10
 dt = 1 / fs / N_steps_per_sample
 
@@ -71,6 +56,7 @@ states_final = state + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
 # Create a function that simulates one step propagation in a sample
 one_step = ca.Function("one_step", [state, input, param], [states_final])
+# Function(one_step:(i0[2],i1,i2[4])->(o0[2]) MXFunction)
 
 X = state
 
@@ -79,18 +65,25 @@ for i in range(N_steps_per_sample):
 
 # Create a function that simulates all step propagation on a sample
 one_sample = ca.Function("one_sample", [state, input, param], [X])
+# Function(one_sample:(i0[2],i1,i2[4])->(o0[2]) MXFunction)
 
 ############ Simulating the system ##########
 all_samples = one_sample.mapaccum("all_samples", N)
+# Function(one_sample_acc10_acc10_acc10_acc10:(i0[2],i1[1x10000],i2[4x10000])->(o0[2x10000]) MXFunction)
+
 
 # Choose an excitation signal
 np.random.seed(0)
-u_data = ca.DM(0.1 * np.random.random(N))
+u_data = 0.1 * np.random.random(N)
 
-x0 = ca.DM([0, 0])
+x0 = np.array([0, 0])
+
+
 X_measured = all_samples(x0, u_data, ca.repmat(param_truth, 1, N))
+# (2, 10000)
 
 y_data = X_measured[0, :].T
+# (10000, 1)
 
 # You may add some noise here
 # y_data+= 0.001*numpy.random.random(N)
@@ -130,6 +123,7 @@ def gauss_newton(e, nlp, V):
 # Note, it is in general a good idea to scale your decision variables such
 # that they are in the order of ~0.1..100
 X_symbolic = all_samples(x0, u_data, ca.repmat(param * scale, 1, N))
+# MX(one_sample_acc10_acc10_acc10_acc10(zeros(2x1), [0.0548814, 0.0715189, 0.0602763, ..., 0.075843, 0.00237874, 0.0813575]', repmat(([1e-06, 0.0001, 1, 1]*param), 10000)){0})
 
 e = y_data - X_symbolic[0, :].T
 nlp = {"x": param, "f": 0.5 * ca.dot(e, e)}
