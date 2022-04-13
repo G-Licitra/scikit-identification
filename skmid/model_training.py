@@ -7,7 +7,7 @@ from skmid.models import DynamicModel
 from skmid.models import generate_model_parameters
 
 
-def gauss_newton(e, nlp, V):
+def _gauss_newton(e, nlp, V):
     r"""Gauss-Newton solver`
 
     Parameters
