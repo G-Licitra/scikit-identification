@@ -5,142 +5,394 @@ import casadi as ca
 import pandas as pd
 
 
-def generate_model_parameters(nx: int, nu: int, nparam: Union[str, None] = None):
+def _infer_model_type(nx: Union[int, None], nu: Union[int, None], np: Union[int, None]):
+    """Infer which inputs the model receives."""
+
+    # CASE parameters are not specified
+    if nx is not None and nu is not None and np is None:
+        _model_type = {
+            "struct": "f(x,u)",
+            "model_input": ["x(t)", "u(t)"],
+            "model_output": ["xdot(t) = f(x(t), u(t))", "y(t) = g(x(t))"],
+        }
+    elif (
+        nx is not None and nu is None and np is None
+    ):  # CASE parameters AND input are not specified
+        _model_type = {
+            "struct": "f(x)",
+            "model_input": ["x(t)"],
+            "model_output": ["xdot(t) = f(x(t))", "y(t) = g(x(t))"],
+        }
+    elif (
+        nx is not None and nu is None and np is not None
+    ):  # CASE input are not specified
+        _model_type = {
+            "struct": "f(x,p)",
+            "model_input": ["x(t)", "p"],
+            "model_output": ["xdot(t) = f(x(t), p)", "y(t) = g(x(t))"],
+        }
+    else:  # CASE states, input and parameters are specified
+        _model_type = {
+            "struct": "f(x,u,p)",
+            "model_input": ["x(t)", "u(t)", "p"],
+            "model_output": ["xdot(t) = f(x(t), u(t), p)", "y(t) = g(x(t))"],
+        }
+    return _model_type
+
+
+def generate_model_parameters(
+    nstate: int, ninput: Union[int, None] = None, nparam: Union[int, None] = None
+):
     """Generate casADi symbol parameters.
 
     Args:
-        nx (int): The dimension of the differential state vector
-        nu (int): The dimension of the control input vector
+        nstate (int): The dimension of the differential state vector
+        ninput (int): The dimension of the control input vector
         nparam (Union[str, None], optional): parameter. The dimension of the parameter vector. Defaults to None.
 
     Returns:
         (x, u, param): the symbolic state, control input and parameter vector, respectively.
+
+    Examples
+    --------
+    >>> from skmid.models import generate_model_parameters
+    >>> (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
     """
-    x = ca.MX.sym("x", nx)
-    u = ca.MX.sym("u", nu)
-    param = None if nparam == None else ca.MX.sym("param", nparam)  # model parameters
+
+    if nstate == 0:
+        raise ValueError("nx must be >= 1")
+    else:
+        x = ca.MX.sym("x", nstate)
+
+    u = None if (ninput is None) or (ninput == 0) else ca.MX.sym("u", ninput)
+    param = None if (nparam is None) or (nparam == 0) else ca.MX.sym("param", nparam)
     return (x, u, param)
 
 
 class DynamicModel:
-    r"""
-    Casadi Class System
-    Formulation:
-    \dot(x(t)) = f(x(x), u(t), \theta)
+    """
+    Declaration of Symbolic Dynamic Model formulated as:
+
+    \dot(x(t)) = f(x(x), u(t), p)
     y(t) = g(f(x))
 
     with:
-    - $x(t) \in \Reˆ{n_{x}}$ differential states
-    - $u(t) \in \Reˆ{n_{u}}$ control inputs
-    - $\theta \in \Reˆ{n_{\theta}}$ model parameters
-    - $\dot(x(t)) \in \Reˆ{n_{x}}$ model dynamics defined as Ordinary Differential Equation (ODE)
-    - $y(t) \in \Reˆ{n_{y}}$$ model output
+    - $x(t) \in \Re^{n_{x}}$ differential states
+    - $u(t) \in \Re^{n_{u}}$ control inputs
+    - $p \in \Re^{n_{p}}$ model parameters
+    - $\dot(x(t)) \in \Re^{n_{x}}$ model dynamics defined as Ordinary Differential Equation (ODE)
+    - $y(t) \in \Re^{n_{y}}$$ model output
 
     Parameters
-    ---------
-    input1: array-like
-        explain input1
-    input2: None or str (default: None)
-        explain input2
-    figsize: tuple (default: (11.7, 8.27))
-        explain figsize
+    ----------
+    states : list[casadi.MX]
+        Symbolic differential states $x(t) \in \Re^{n_{x}}$.
+    inputs : casadi.MX, default=None
+        Symbolic control inputs $u(t) \in \Re^{n_{u}}$.
+    param : casadi.MX, default=True
+        Symbolic model parameters $p \in \Re^{n_{p}}$.
+    model_dynamics : list[casadi.MX]
+        List of symbolic equations which define the model dynamics.
+    output : casadi.MX, default=None
+        List of symbolic equations which define the model output. If not specicient output=states, i.e. y(t)=x(t)
+    state_name : list[str], default=None
+        Differential state labels, defaulting to [x1, x2, ..., x_{n_{x}}].
+    input_name : list[str], default=None
+        Input labels, defaulting to [u1, u2, ..., x_{n_{u}}].
+    param_name : list[str], default=None
+        Parameter labels, defaulting to [p1, p2, ..., p_{n_{p}}].
+    output_name : list[str], default=None
+        output labels, defaulting to [y1, y2, ..., y_{n_{y}}].
 
-    Returns
-    ---------
-    p_plot: Figure
+    See Also
+    --------
+    DynamicModel.print_summary : Print info about model inputs, output and their corresponding dimension.
+    DynamicModel.evaluate : Numerical evaludation of the model.
+
 
     Examples
-    ---------
+    --------
+    Construct simple dynamic model with one differential state, one input.
 
-    >>> input1 = np.random.rand(100)
-    >>> input2 = 2
-    >>> p_plot = func(input1, input2)
+    >>> (x, u, _) = generate_model_parameters(nx=1, nu=1)
+    >>> model = DynamicModel(states=x, inputs=u, model_dynamics=[2*x**2 + u])
+    >>> model.print_summary()
+    Input Summary
+    -----------------
+    states    = ['x1']
+    inputs    = ['u1']
+    parameter = None
+    output    = ['y1']
+
+    Dimension Summary
+    -----------------
+    Number of inputs: 2
+    Input 0 ("x(t)"): 1x1
+    Input 1 ("u(t)"): 1x1
+    Number of outputs: 2
+    Output 0 ("xdot(t) = f(x(t), u(t))"): 1x1
+    Output 1 ("y(t) = g(x(t))"): 1x1
+
+    Note that output is equal to states when not specified.
+
+    Construct Lorenz system (more info [here](https://en.wikipedia.org/wiki/Lorenz_system).
+
+    >>> (states, inputs, param) = generate_model_parameters(nx=3, nu=3, nparam=3)
+
+    Define sub-variables for better readibility of the equation
+
+    >>> (x,y,z) = states[0], states[1], states[2]
+    >>> (sigma, rho, beta) = param[0], param[1], param[2]
+    >>> model = DynamicModel(
+    ...        states=states,
+    ...        param=param,
+    ...        model_dynamics=model_dynamics,
+    ...        state_name = ['x', 'y', 'z'], # ensure the correct order
+    ...        param_name = ['sigma', 'rho', 'beta'])
+
+    >>> model.print_summary()
+    Input Summary
+    -----------------
+    states    = ['x', 'y', 'z']
+    inputs    = None
+    parameter = ['sigma', 'rho', 'beta']
+    output    = ['y1', 'y2', 'y3']
+
+    Dimension Summary
+    -----------------
+    Number of inputs: 2
+    Input 0 ("x(t)"): 3x1
+    Input 1 ("p"): 3x1
+    Number of outputs: 2
+    Output 0 ("xdot(t) = f(x(t), p)"): 3x1
+    Output 1 ("y(t) = g(x(t))"): 3x1
+
+    Evalute function. Lorenz used the following parameter sigma=10, rho=8/3, beta=28.
+    The x would represent the initial condition set at x0=0.0, y0=40.0, z0=0.01
+    >>> (Xdot_val, Y_val) = model.evaluate(state_num=[0.0, 40.0, 0.01], param_num=[10, 8/3, 28])
+    >>> Xdot_val
+        x     y     z
+    0  400.0 -40.0 -0.28
+
+    >>> Y_val
+        y1    y2    y3
+    0  0.0  40.0  0.01
 
     """
 
-    # class variable: every instance will inherit this value
-    # nationality = "italy"
-
+    # TODO adjust input
     def __init__(
         self,
-        states,
-        inputs,
+        *,
+        states=list[ca.casadi.MX],
+        inputs=None,
         param=None,
-        model_dynamics=None,
+        model_dynamics=list[ca.casadi.MX],
         output=None,
-        name_state=None,
-        name_input=None,
-        name_output=None,
+        state_name=None,
+        input_name=None,
+        param_name=None,
+        output_name=None,
     ):
 
-        """Constructor. It runs every instance is created"""
         self.states = states
         self.inputs = inputs
         self.param = param
 
+        if isinstance(model_dynamics, list):
+            self.model_dynamics = ca.vcat(model_dynamics)
+        else:
+            raise ValueError("model_dynamics must be a list of casadi.MX")
+
+        if isinstance(output, list) or output is None:
+            self.output = states if output is None else ca.vcat(output)
+        else:
+            raise ValueError("output must be a list of casadi.MX")
+
         # get dimentions
-        self.nx = states.shape[0]  # differential states
-        self.nu = inputs.shape[0]  # control input
-        self.np = None if param == None else param.shape[0]  # model parameters
+        self.__nx = states.shape[0]  # different states
+        self.__nu = None if inputs is None else inputs.shape[0]  # control input
+        self.__np = None if param is None else param.shape[0]  # model parameters
+        self.__ny = self.__nx if output is None else len(output)  # model output
 
-        self.model_dynamics = ca.vcat(model_dynamics)
+        self.__match_attributes(state_name, input_name, param_name, output_name)
 
-        # if output y(t) is not specified, then set y = x(t)
-        self.output = states if output == None else ca.vcat(output)
-        self.ny = self.nx if output == None else output.shape[0]  # model parameters
+        self.__check_attribute_consistency()
 
-        # Construct Model
-        # Form an ode function
-        print(self.np)
-        if self.np == None:
-            self.Fmodel = ca.Function(
+        _model_type = _infer_model_type(nx=self.__nx, nu=self.__nu, np=self.__np)
+
+        # Construct Symbolic Dynamic Model
+        if _model_type["struct"] == "f(x,u)":
+            self.model_function = ca.Function(
                 "model",
                 [self.states, self.inputs],
                 [self.model_dynamics, self.output],
-                ["x(y)", "u(t)"],
-                ["xdot(t) = f(x(t),u(t))", "y(t) = g(x(t))"],
+                _model_type["model_input"],
+                _model_type["model_output"],
             )
-        else:
-            self.Fmodel = ca.Function(
+        elif _model_type["struct"] == "f(x)":
+            self.model_function = ca.Function(
+                "model",
+                [self.states],
+                [self.model_dynamics, self.output],
+                _model_type["model_input"],
+                _model_type["model_output"],
+            )
+        elif _model_type["struct"] == "f(x,p)":
+            self.model_function = ca.Function(
+                "model",
+                [self.states, self.param],
+                [self.model_dynamics, self.output],
+                _model_type["model_input"],
+                _model_type["model_output"],
+            )
+        elif _model_type["struct"] == "f(x,u,p)":
+            self.model_function = ca.Function(
                 "model",
                 [self.states, self.inputs, self.param],
                 [self.model_dynamics, self.output],
-                ["x(y)", "u(t)", "theta"],
-                ["xdot(t) = f(x(t),u(t),theta)", "y(t) = g(x(t))"],
+                _model_type["model_input"],
+                _model_type["model_output"],
             )
 
-    def _validate_params(self):
-        """Validate input params."""
-        return None
+    def print_summary(self):
+        """Print info about model inputs, output and their corresponding dimension."""
+        print("Input Summary\n-----------------")
+        print(f"states    = {self.state_name}")
+        print(f"inputs    = {self.input_name}")
+        print(f"parameter = {self.param_name}")
+        print(f"output    = {self.output_name}")
+        print("\nDimension Summary\n-----------------")
+        self.model_function.print_dimensions()
 
-    def print_dimensions(self):
-        self.Fmodel.print_dimensions()
+    def evaluate(self, *, state_num=list[float], input_num=None, param_num=None):
+        """Numerical evaludation of the model."""
 
-    def print_ode(self):
+        error_str = """Input mishmatch. Please check that the inputs are consistent with class attributes."""
+
+        _model_type = _infer_model_type(nx=self.__nx, nu=self.__nu, np=self.__np)
+
+        if _model_type["struct"] == "f(x,u)":
+            if state_num is not None and input_num is not None and param_num is None:
+                (rhs_num, y_num) = self.model_function(state_num, input_num)
+            else:
+                raise ValueError(error_str)
+
+        if _model_type["struct"] == "f(x)":
+            if state_num is not None and input_num is None and param_num is None:
+                (rhs_num, y_num) = self.model_function(state_num)
+            else:
+                raise ValueError(error_str)
+
+        if _model_type["struct"] == "f(x,p)":
+            if state_num is not None and input_num is None and param_num is not None:
+                (rhs_num, y_num) = self.model_function(state_num, param_num)
+            else:
+                raise ValueError(error_str)
+
+        if _model_type["struct"] == "f(x,u,p)":
+            if (
+                state_num is not None
+                and input_num is not None
+                and param_num is not None
+            ):
+                (rhs_num, y_num) = self.model_function(state_num, input_num, param_num)
+            else:
+                raise ValueError(error_str)
+
+        # Wrap values in pandas dataframe
+        model_dynamics_num = pd.DataFrame(
+            data=rhs_num.full().T, columns=self.state_name
+        )
+        output_num = pd.DataFrame(data=y_num.full().T, columns=self.output_name)
+
+        return (model_dynamics_num, output_num)
+
+    def __match_attributes(self, state_name, input_name, param_name, output_name):
+        """Assign names to attributes, if specified"""
+        self.state_name = (
+            ["x" + str(i + 1) for i in range(self.__nx)]
+            if state_name is None
+            else state_name
+        )
+
+        if self.__nu is not None:
+            self.input_name = (
+                ["u" + str(i + 1) for i in range(self.__nu)]
+                if input_name is None
+                else input_name
+            )
+        else:
+            self.input_name = None
+
+        if self.__np is not None:
+            self.param_name = (
+                ["p" + str(i + 1) for i in range(self.__np)]
+                if param_name is None
+                else param_name
+            )
+        else:
+            self.param_name = None
+
+        self.output_name = (
+            ["y" + str(i + 1) for i in range(self.__ny)]
+            if output_name is None
+            else output_name
+        )
+
+    def __check_attribute_consistency(self):
+        """Check if Input class are consistent"""
+        if self.__nx != self.model_dynamics.size()[0]:
+            # case dim(states) != dim(rhs)
+            raise ValueError(
+                "Input class is not consistent. states and model_dynamics must have the same dimension."
+            )
+
+        if self.__nx != len(self.state_name):
+            raise ValueError(
+                "Input class is not consistent. state and state_name must have the same dimension."
+            )
+
+        if (self.__nu is not None) and self.__nu != len(self.input_name):
+            raise ValueError(
+                "Input class is not consistent. state and state_name must have the same dimension."
+            )
+
+        if (self.__np is not None) and (self.__np != len(self.param_name)):
+            raise ValueError(
+                "Input class is not consistent. param and param_name must have the same dimension."
+            )
+
+        if self.__ny != len(self.output_name):
+            raise ValueError(
+                "Input class is not consistent. output and output_name must have the same dimension."
+            )
+
+    def __print_ode(self):
         print(self.model_dynamics)
 
-    def print_output(self):
+    def __print_output(self):
         print(self.output)
 
-    def evaluate(self, x0, u0, param):
-        # TODO: add case with not param
-        (rhs_num, y_num) = self.Fmodel(x0, u0, param)
-        return (rhs_num, y_num)
 
-    def __repr__(self):
-        f"""
-        Dynamic Model with:
-        - states:{self.nx} = [x1, x2]
-        - inputs:{self.nu} = [u1, u2]
-        - parameter:{self.param} = [p1,p2]
-        """
+# class LTImodel(DynamicModel):
 
-        return "self.model.print_dimensions()"  # string to print
+#     def __init__(
+#         self,
+#         A=None,
+#         B=None,
+#         C=None,
+#         param=None,
+#         state_name=None,
+#         input_name=None,
+#         param_name=None,
+#         output_name=None,
+#     ):
 
 
 if __name__ == "__main__":  # when run for testing only
 
-    (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+    (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
 
     # assign specific name
     x1, x2 = x[0], x[1]
@@ -150,16 +402,19 @@ if __name__ == "__main__":  # when run for testing only
     # xdot = f(x,u,p) <==> rhs = f(x,u,p)
     rhs = [u1 - ka * x1, u1 * u2 / x1 - u1 * x2 / x1 - kb * x2]
 
-    #%%
+    # %%
     sys = DynamicModel(states=x, inputs=u, param=param, model_dynamics=rhs)
-    sys.print_dimensions()
-    sys.print_ode()
 
     # numerical evaluation ===================================================
     x_test = [0.1, -0.1]
     u_test = [0.2, -0.1]
     theta_test = [0.1, 0.5]
-    rhs_num, y_num = sys.evaluate(x_test, u_test, theta_test)
+
+    sys.print_summary()
+
+    rhs_num, y_num = sys.evaluate(
+        state_num=x_test, input_num=u_test, param_num=theta_test
+    )
 
     print(f"rhs = {rhs_num}, \ny = {y_num}")
 

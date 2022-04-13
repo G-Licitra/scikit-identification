@@ -1,23 +1,26 @@
 repos:
 -   repo: https://github.com/ambv/black
-    rev: 22.1.0
+    rev: 22.3.0
     hooks:
     - id: black
-      language_version: python3.8
+      language_version: python
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.2.3
+    rev: v3.4.0
     hooks:
     -   id: check-yaml
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-    -   id: flake8
         additional_dependencies: ['darglint', 'pydocstyle<4.0']
+-   repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.4  # pick a git hash / tag to point to
+    hooks:
+    -   id: flake8
 -   repo: https://github.com/asottile/reorder_python_imports
-    rev: v2.7.1
+    rev: v2.4.0
     hooks:
     -   id: reorder-python-imports
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.931
+    rev: v0.812
     hooks:
     -   id: mypy
         args: [--no-strict-optional, --ignore-missing-imports]
@@ -30,7 +33,3 @@ repos:
         language: system
         types: [python]
         stages: [commit]
--   repo: git://github.com/chewse/pre-commit-mirrors-pydocstyle
-    rev: v2.1.1
-    hooks:
-    -   id: pydocstyle
