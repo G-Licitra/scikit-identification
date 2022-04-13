@@ -79,7 +79,7 @@ u_data = 0.1 * np.random.random(N)
 x0 = np.array([0, 0])
 
 
-X_measured = all_samples(x0, u_data, ca.repmat(param_truth, 1, N))
+X_measured = all_samples(x0, u_data, ca.repmat(param_truth, 1, N)).full()
 # (2, 10000)
 
 y_data = X_measured[0, :].T
