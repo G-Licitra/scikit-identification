@@ -8,7 +8,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-LONG_DESCRIPTION = """Pingouin is a statistical Python package based on Pandas."""
+LONG_DESCRIPTION = """Scikit-identification is a package based on CASADI and scikit-learn."""
 
 DISTNAME = "scikit-identification"
 DESCRIPTION = "skmid: A set of python modules for dynamic model identification"
