@@ -10,13 +10,13 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from skmid.integrator import RungeKutta4
 from skmid.models import DynamicModel
-from skmid.models import generate_model_parameters
+from skmid.models import generate_model_attributes
 
 
 def lotka_volterra():
 
     # define states and parameters
-    (states, _, param) = generate_model_parameters(nstate=2, nparam=4)
+    (states, _, param) = generate_model_attributes(state_size=2, parameter_size=4)
 
     # x, y,  number of prey (for example, rabbits), number of some predator (for example, foxes)
     x, y = states[0], states[1]
@@ -77,7 +77,7 @@ def van_der_pol_oscillator():
     """
 
     # define states and parameters
-    (states, _, param) = generate_model_parameters(nstate=2, nparam=1)
+    (states, _, param) = generate_model_attributes(state_size=2, parameter_size=1)
     x1, x2 = states[0], states[1]
     mu = param[0]
 
@@ -117,7 +117,7 @@ def van_der_pol_oscillator():
 def lorenz_system():
 
     # define states and parameters
-    (states, _, _) = generate_model_parameters(nstate=3)
+    (states, _, _) = generate_model_attributes(state_size=3)
     x, y, z = states[0], states[1], states[2]
 
     sigma = 10
@@ -157,7 +157,7 @@ def lorenz_system():
 def chua_circuit():
 
     # define states and parameters
-    (states, _, _) = generate_model_parameters(nstate=3)
+    (states, _, _) = generate_model_attributes(state_size=3)
     x, y, z = states[0], states[1], states[2]
 
     alpha = 15.6
@@ -204,7 +204,7 @@ def chua_circuit():
 def magnetic_levitation_system():
 
     # define states and parameters
-    (states, input, _) = generate_model_parameters(nstate=3, ninput=1)
+    (states, input, _) = generate_model_attributes(state_size=3, input_size=1)
 
     p = states[0]  # x1 object position [m]
     v = states[1]  # x2 object velocity [m/s]

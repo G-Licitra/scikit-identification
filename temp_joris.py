@@ -4,7 +4,7 @@ import numpy as np
 
 from skmid.integrator import RungeKutta4
 from skmid.models import DynamicModel
-from skmid.models import generate_model_parameters
+from skmid.models import generate_model_attributes
 
 ############ SETTINGS #####################
 N = 10000  # Number of samples
@@ -16,7 +16,9 @@ scale = [1e-6, 1e-4, 1, 1]
 
 ############ MODELING #####################
 
-(state, input, param) = generate_model_parameters(nstate=2, ninput=1, nparam=4)
+(state, input, param) = generate_model_attributes(
+    state_size=2, input_size=1, parameter_size=4
+)
 
 
 y, dy = state[0], state[1]

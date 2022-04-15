@@ -5,7 +5,7 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 from skmid.models import DynamicModel
-from skmid.models import generate_model_parameters
+from skmid.models import generate_model_attributes
 
 
 class TestDynamicModel:
@@ -13,7 +13,9 @@ class TestDynamicModel:
 
     def test_instance_type(self):
         """Check if function returns a pandas Series."""
-        (x, u, param) = generate_model_parameters(nstate=2, ninput=1, nparam=1)
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=1, parameter_size=1
+        )
 
         model = DynamicModel(
             states=x,
@@ -28,7 +30,9 @@ class TestDynamicModel:
     def test_check_attribute_inconsistency(self):
         """Test whether error are raised when inputs are inconsistent."""
 
-        (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=2, parameter_size=2
+        )
 
         # assign specific name
         x1, x2 = x[0], x[1]
@@ -96,7 +100,9 @@ class TestDynamicModel:
     def test_output(self):
         """Test output under several case scenarios."""
 
-        (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=2, parameter_size=2
+        )
 
         # assign specific name
         x1, x2 = x[0], x[1]

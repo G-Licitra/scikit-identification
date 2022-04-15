@@ -6,7 +6,7 @@ from scipy.signal import chirp
 
 from skmid.integrator import RungeKutta4
 from skmid.models import DynamicModel
-from skmid.models import generate_model_parameters
+from skmid.models import generate_model_attributes
 
 np.random.seed(42)
 

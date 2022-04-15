@@ -40,33 +40,43 @@ def _infer_model_type(nx: Union[int, None], nu: Union[int, None], np: Union[int,
     return _model_type
 
 
-def generate_model_parameters(
-    nstate: int, ninput: Union[int, None] = None, nparam: Union[int, None] = None
+def generate_model_attributes(
+    state_size: int,
+    input_size: Union[int, None] = None,
+    parameter_size: Union[int, None] = None,
 ):
     """Generate casADi symbol parameters.
 
     Args:
-        nstate (int): The dimension of the differential state vector
-        ninput (int): The dimension of the control input vector
-        nparam (Union[str, None], optional): parameter. The dimension of the parameter vector. Defaults to None.
+        state_size (int): The dimension of the differential state vector
+        input_size (Union[int, None], optional): The dimension of the control input vector
+        nparam (Union[int, None], optional): parameter. The dimension of the parameter vector. Defaults to None.
 
     Returns:
         (x, u, param): the symbolic state, control input and parameter vector, respectively.
 
     Examples
     ----------
-    >>> from skmid.models import generate_model_parameters
-    >>> (x, u, param) = generate_model_parameters(nx=2, nu=2, nparam=2)
+    >>> from skmid.models import generate_model_attributes
+    >>> (x, u, param) = generate_model_attributes(nx=2, nu=2, nparam=2)
     """
 
-    if nstate == 0:
-        raise ValueError("nx must be >= 1")
+    if state_size == 0:
+        raise ValueError("state_size must be >= 1")
     else:
-        x = ca.MX.sym("x", nstate)
+        state = ca.MX.sym("x", state_size)
 
-    u = None if (ninput == None) or (ninput == 0) else ca.MX.sym("u", ninput)
-    param = None if (nparam == None) or (nparam == 0) else ca.MX.sym("param", nparam)
-    return (x, u, param)
+    input = (
+        None
+        if (input_size == None) or (input_size == 0)
+        else ca.MX.sym("u", input_size)
+    )
+    parameter = (
+        None
+        if (parameter_size == None) or (parameter_size == 0)
+        else ca.MX.sym("p", parameter_size)
+    )
+    return (state, input, parameter)
 
 
 class DynamicModel:
@@ -114,7 +124,7 @@ class DynamicModel:
     ---------
     Construct simple dynamic model with one differential state, one input.
 
-    >>> (x, u, _) = generate_model_parameters(nx=1, nu=1)
+    >>> (x, u, _) = generate_model_attributes(nx=1, nu=1)
     >>> model = DynamicModel(states=x, inputs=u, model_dynamics=[2*x**2 + u])
     >>> model.print_summary()
     Input Summary
@@ -137,7 +147,7 @@ class DynamicModel:
 
     Construct Lorenz system (more info [here](https://en.wikipedia.org/wiki/Lorenz_system).
 
-    >>> (states, inputs, param) = generate_model_parameters(nx=3, nu=3, nparam=3)
+    >>> (states, inputs, param) = generate_model_attributes(nx=3, nu=3, nparam=3)
 
     Define sub-variables for better readibility of the equation
 
@@ -392,7 +402,7 @@ class DynamicModel:
 
 if __name__ == "__main__":  # when run for testing only
 
-    (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
+    (x, u, param) = generate_model_attributes(state_size=2, input_size=2, nparam=2)
 
     # assign specific name
     x1, x2 = x[0], x[1]
