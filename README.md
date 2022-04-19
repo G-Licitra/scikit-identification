@@ -8,3 +8,7 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Model Identification Toolkit
+
+Install method suggestion:
+
+- `pip install git+https://github.com/G-Licitra/scikit-identification.git@pack_build`
