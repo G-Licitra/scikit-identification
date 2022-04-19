@@ -30,9 +30,9 @@ rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
 
 
 model = DynamicModel(
-    states=state,
-    inputs=input,
-    param=param,
+    state=state,
+    input=input,
+    parameter=param,
     model_dynamics=rhs,
 )
 

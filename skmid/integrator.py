@@ -18,9 +18,9 @@ class RungeKutta4:
         self.fs = fs  # frequency sample
         self.model = model
 
-        state = model.states
-        input = model.inputs
-        param = model.param
+        state = model.state
+        input = model.input
+        param = model.parameter
 
         # infer model architecture
         # nx = len(model.state_name)

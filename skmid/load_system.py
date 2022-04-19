@@ -30,8 +30,8 @@ def lotka_volterra():
     output = [ca.fabs(x - y)]  # absolute value casadi operator
 
     model = DynamicModel(
-        states=states,
-        param=param,
+        state=states,
+        parameter=param,
         model_dynamics=rhs,
         output=output,
         state_name=["x", "y"],
@@ -83,7 +83,7 @@ def van_der_pol_oscillator():
 
     # dx = f(states, input) <==> rhs = f(x,u, p)
     rhs = [mu * (1 - x2**2) * x1 - x2, x1]
-    model = DynamicModel(states=states, param=param, model_dynamics=rhs)
+    model = DynamicModel(state=states, parameter=param, model_dynamics=rhs)
 
     # invoke integrator
     rk4 = RungeKutta4(model=model, fs=100)
@@ -126,7 +126,7 @@ def lorenz_system():
 
     # dx = f(states) <==> rhs = f(x)
     rhs = [sigma * (y - x), x * (rho - z) - y, x * y - beta * z]
-    model = DynamicModel(states=states, model_dynamics=rhs, state_name=["x", "y", "z"])
+    model = DynamicModel(state=states, model_dynamics=rhs, state_name=["x", "y", "z"])
 
     # invoke integrator
     rk4 = RungeKutta4(model=model, fs=100)
@@ -173,7 +173,7 @@ def chua_circuit():
 
     # dx = f(states) <==> rhs = f(x)
     rhs = [dx, dy, dz]
-    model = DynamicModel(states=states, model_dynamics=rhs, state_name=["x", "y", "z"])
+    model = DynamicModel(state=states, model_dynamics=rhs, state_name=["x", "y", "z"])
 
     # invoke integrator
     rk4 = RungeKutta4(model=model, fs=100)
@@ -230,8 +230,8 @@ def magnetic_levitation_system():
     output = [p]  # measure position
 
     model = DynamicModel(
-        states=states,
-        inputs=input,
+        state=states,
+        input=input,
         model_dynamics=rhs,
         output=output,
         state_name=["position", "velocity", "current"],
