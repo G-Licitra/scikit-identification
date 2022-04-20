@@ -1,0 +1,9 @@
+{
+    "N": 10000,
+    "fs": 610.1,
+    "param_truth": [5.625e-6, 2.3e-4, 1, 4.69],
+    "param_guess": [5, 2, 1, 5],
+    "scale": [1e-6, 1e-4, 1, 1],
+    "n_steps_per_sample": 10,
+    "initial_condition": [0, 0]
+}

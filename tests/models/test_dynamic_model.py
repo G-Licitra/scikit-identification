@@ -5,30 +5,34 @@ import pytest
 from pandas.testing import assert_frame_equal
 
 from skmid.models import DynamicModel
-from skmid.models import generate_model_parameters
+from skmid.models import generate_model_attributes
 
-
+# TODO test input type consistency
 class TestDynamicModel:
     """Test class DynamicModel"""
 
     def test_instance_type(self):
         """Check if function returns a pandas Series."""
-        (x, u, param) = generate_model_parameters(nstate=2, ninput=1, nparam=1)
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=1, parameter_size=1
+        )
 
         model = DynamicModel(
-            states=x,
-            inputs=u,
-            param=param,
+            state=x,
+            input=u,
+            parameter=param,
             model_dynamics=[param * x[0] + u, x[1]],
-            output=[x**2],
+            output=["x2"],
         )
 
         assert isinstance(model, DynamicModel)
 
-    def test_check_attribute_inconsistency(self):
+    def test_check_attribute_consistency(self):
         """Test whether error are raised when inputs are inconsistent."""
 
-        (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=2, parameter_size=2
+        )
 
         # assign specific name
         x1, x2 = x[0], x[1]
@@ -40,14 +44,14 @@ class TestDynamicModel:
 
         # Case states and model_dynamics do not have the same dimension
         with pytest.raises(ValueError):
-            model = DynamicModel(states=x1, inputs=u, param=param, model_dynamics=rhs)
+            model = DynamicModel(state=x1, input=u, parameter=param, model_dynamics=rhs)
 
         # Case state and state_name do not have the same dimension
         with pytest.raises(ValueError):
             model = DynamicModel(
-                states=x,
-                inputs=u,
-                param=param,
+                state=x,
+                input=u,
+                parameter=param,
                 model_dynamics=rhs,
                 state_name=["a", "b", "c"],
             )
@@ -55,48 +59,54 @@ class TestDynamicModel:
         # Case input and input_name do not have the same dimension
         with pytest.raises(ValueError):
             model = DynamicModel(
-                states=x, inputs=u, param=param, model_dynamics=rhs, input_name=["a"]
+                state=x, input=u, parameter=param, model_dynamics=rhs, input_name=["a"]
             )
 
-        # Case param and param_name do not have the same dimension
+        # Case param and parameter_name do not have the same dimension
         with pytest.raises(ValueError):
             model = DynamicModel(
-                states=x,
-                inputs=u,
-                param=param,
+                state=x,
+                input=u,
+                parameter=param,
                 model_dynamics=rhs,
-                param_name=["p1", "p2", "p3"],
+                parameter_name=["p1", "p2", "p3"],
             )
 
-        # Case output and output_name do not have the same dimension
+        # Case output is not contained in state_name
         with pytest.raises(ValueError):
             model = DynamicModel(
-                states=x, inputs=u, param=param, model_dynamics=rhs, output_name=["y1"]
+                state=x,
+                input=u,
+                parameter=param,
+                model_dynamics=rhs,
+                output=["foo"],
             )
 
         # Case model_dynamics is not a list
         with pytest.raises(ValueError):
             model = DynamicModel(
-                states=x[0],
-                inputs=u[0],
-                param=param[0],
+                state=x[0],
+                input=u[0],
+                parameter=param[0],
                 model_dynamics=param[0] * x[0] ** 2 + u[0],
             )
 
         # Case output is not a list
         with pytest.raises(ValueError):
             model = DynamicModel(
-                states=x[0],
-                inputs=u[0],
-                param=param[0],
+                state=x[0],
+                input=u[0],
+                parameter=param[0],
                 model_dynamics=[param[0] * x[0] ** 2 + u[0]],
-                output=x[0] ** 2,
+                output="x2",
             )
 
     def test_output(self):
         """Test output under several case scenarios."""
 
-        (x, u, param) = generate_model_parameters(nstate=2, ninput=2, nparam=2)
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=2, parameter_size=2
+        )
 
         # assign specific name
         x1, x2 = x[0], x[1]
@@ -106,49 +116,41 @@ class TestDynamicModel:
         # Case f(x, u)
         # ----------------------------------------------------------------
         model = DynamicModel(
-            states=x,
-            inputs=u,
+            state=x,
+            input=u,
             model_dynamics=[x1 + x2 + u1 + u2, -x1 - x2 - u1 - u2],
-            output=[2 * (x1 + x2), x1, x2 / 2],
         )
 
-        (Xval, Yval) = model.evaluate(state_num=[1, 1], input_num=[1, 1])
+        xdot_eval = model.evaluate(state_num=[1, 1], input_num=[1, 1])
 
         Xtarget = pd.DataFrame(data={"x1": 4.0, "x2": -4.0}, index=[0])
-        Ytarget = pd.DataFrame(data={"y1": 4.0, "y2": 1.0, "y3": 0.5}, index=[0])
-        assert_frame_equal(Xval, Xtarget, check_dtype=False)
-        assert_frame_equal(Yval, Ytarget, check_dtype=False)
+        assert_frame_equal(xdot_eval, Xtarget, check_dtype=False)
 
         # case with naming state, input and output
         model = DynamicModel(
-            states=x,
-            inputs=u,
+            state=x,
+            input=u,
             model_dynamics=[x1 + x2 + u1 + u2, -x1 - x2 - u1 - u2],
-            output=[2 * (x1 + x2), x1, x2 / 2],
+            output=["q"],
             state_name=["p", "q"],
             input_name=["ux", "uy"],
-            output_name=["a", "b", "c"],
         )
 
-        (Xval, Yval) = model.evaluate(state_num=[-1, -1], input_num=[-1, -1])
+        xdot_eval = model.evaluate(state_num=[-1, -1], input_num=[-1, -1])
 
         Xtarget = pd.DataFrame(data={"p": -4.0, "q": 4.0}, index=[0])
-        Ytarget = pd.DataFrame(data={"a": -4.0, "b": -1.0, "c": -0.5}, index=[0])
-        assert_frame_equal(Xval, Xtarget, check_dtype=False)
-        assert_frame_equal(Yval, Ytarget, check_dtype=False)
+        assert_frame_equal(xdot_eval, Xtarget, check_dtype=False)
 
         # Case f(x)
         # ----------------------------------------------------------------
         model = DynamicModel(
-            states=x,
+            state=x,
             model_dynamics=[x1 + x2**2, -np.log(x1) - x2],
-            output=[2 * (x1 + x2) + np.sqrt(x1)],
             state_name=["wx", "wy"],
-            output_name=["y(t)"],
         )
 
         x_init = [1, 2]
-        (Xval, Yval) = model.evaluate(state_num=x_init)
+        xdot_eval = model.evaluate(state_num=x_init)
 
         Xtarget = pd.DataFrame(
             data={
@@ -157,26 +159,21 @@ class TestDynamicModel:
             },
             index=[0],
         )
-        Ytarget = pd.DataFrame(
-            data={"y(t)": 2 * (x_init[0] + x_init[1]) + np.sqrt(x_init[0])}, index=[0]
-        )
-        assert_frame_equal(Xval, Xtarget, check_dtype=False)
-        assert_frame_equal(Yval, Ytarget, check_dtype=False)
+        assert_frame_equal(xdot_eval, Xtarget, check_dtype=False)
 
         # Case f(x,p)
         # ----------------------------------------------------------------
         model = DynamicModel(
-            states=x,
-            param=param,
+            state=x,
+            parameter=param,
             model_dynamics=[x1 + x2**ka, -np.log(x1) - x2],
-            output=[kb * (x1 + x2) + np.sqrt(x1)],
             state_name=["wx", "wy"],
         )
 
         x_init = [1, 2]
         k_num = [2, 2]
 
-        (Xval, Yval) = model.evaluate(state_num=x_init, param_num=k_num)
+        xdot_eval = model.evaluate(state_num=x_init, parameter_num=k_num)
 
         Xtarget = pd.DataFrame(
             data={
@@ -185,21 +182,16 @@ class TestDynamicModel:
             },
             index=[0],
         )
-        Ytarget = pd.DataFrame(
-            data={"y1": k_num[1] * (x_init[0] + x_init[1]) + np.sqrt(x_init[0])},
-            index=[0],
-        )
-        assert_frame_equal(Xval, Xtarget, check_dtype=False)
-        assert_frame_equal(Yval, Ytarget, check_dtype=False)
+
+        assert_frame_equal(xdot_eval, Xtarget, check_dtype=False)
 
         # Case f(x,u,p)
         # ----------------------------------------------------------------
         model = DynamicModel(
-            states=x,
-            inputs=u,
-            param=param,
+            state=x,
+            input=u,
+            parameter=param,
             model_dynamics=[x1 + x2**ka + u1, -np.log(x1) - x2 + u1 * u2],
-            output=[kb * (x1 + x2) + np.sqrt(x1)],
             input_name=["W", "V"],
         )
 
@@ -207,8 +199,8 @@ class TestDynamicModel:
         k_num = [2, 2]
         u_init = [0.2, 5]
 
-        (Xval, Yval) = model.evaluate(
-            state_num=x_init, input_num=u_init, param_num=k_num
+        xdot_eval = model.evaluate(
+            state_num=x_init, input_num=u_init, parameter_num=k_num
         )
 
         Xtarget = pd.DataFrame(
@@ -218,9 +210,5 @@ class TestDynamicModel:
             },
             index=[0],
         )
-        Ytarget = pd.DataFrame(
-            data={"y1": k_num[1] * (x_init[0] + x_init[1]) + np.sqrt(x_init[0])},
-            index=[0],
-        )
-        assert_frame_equal(Xval, Xtarget, check_dtype=False)
-        assert_frame_equal(Yval, Ytarget, check_dtype=False)
+
+        assert_frame_equal(xdot_eval, Xtarget, check_dtype=False)
