@@ -390,7 +390,7 @@ class DynamicModel:
                 self.output_name = self.output
             else:
                 message_error = f"""the following element are defined in output but not in the state vector: {list(set(self.state_name) - set(self.output))}. Output can be either the full state vector or a subset of the state vector.
-                    isf state_name has not been specified, please specify output=['x1', 'x2',..., 'xn'] where n is the number of states."""
+                isf state_name has not been specified, please specify output=['x1', 'x2',..., 'xn'] where n is the number of states."""
 
                 raise ValueError(message_error)
 
