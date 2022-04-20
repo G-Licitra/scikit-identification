@@ -160,7 +160,7 @@ class RungeKutta4:
         else:
             raise ValueError("Model type not supported")
 
-        self.one_sample_ahead = one_sample_ahead
+        self.__one_sample_ahead = one_sample_ahead
 
     def simulate(self, *, initial_condition, input=None, parameter=None, n_steps=100):
 
@@ -184,7 +184,7 @@ class RungeKutta4:
             )
 
         # Propagate simulation for N steps and generate trajectory
-        k_sample_ahead = self.one_sample_ahead.mapaccum("x_simulation", n_steps)
+        k_sample_ahead = self.__one_sample_ahead.mapaccum("x_simulation", n_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
             state_sim = k_sample_ahead(initial_condition, input.values.T)

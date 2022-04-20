@@ -39,41 +39,41 @@ def load_non_linear_model_data():
     return (U, Y, settings)
 
 
-# class TestLeastSquaresRegression:
-#     def test_algorithm(self, load_non_linear_model_data):
-#         (U, Y, settings) = load_non_linear_model_data
+class TestLeastSquaresRegression:
+    def test_algorithm(self, load_non_linear_model_data):
+        (U, Y, settings) = load_non_linear_model_data
 
-#         # Define the model
-#         (state, input, param) = generate_model_attributes(
-#             state_size=2, input_size=1, parameter_size=4
-#         )
-#         y, dy = state[0], state[1]
-#         u = input[0]
-#         M, c, k, k_NL = param[0], param[1], param[2], param[3]
-#         rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
-#         model = DynamicModel(
-#             state=state,
-#             input=input,
-#             parameter=param,
-#             model_dynamics=rhs,
-#         )
+        # Define the model
+        (state, input, param) = generate_model_attributes(
+            state_size=2, input_size=1, parameter_size=4
+        )
+        y, dy = state[0], state[1]
+        u = input[0]
+        M, c, k, k_NL = param[0], param[1], param[2], param[3]
+        rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
+        model = DynamicModel(
+            state=state,
+            input=input,
+            parameter=param,
+            model_dynamics=rhs,
+        )
 
-#         # Call Estimator
-#         fs = settings["fs"]
-#         n_steps_per_sample = settings["n_steps_per_sample"]
-#         estimator = LeastSquaresRegression(
-#             model=model, fs=fs, n_steps_per_sample=n_steps_per_sample
-#         )
+        # Call Estimator
+        fs = settings["fs"]
+        n_steps_per_sample = settings["n_steps_per_sample"]
+        estimator = LeastSquaresRegression(
+            model=model, fs=fs, n_steps_per_sample=n_steps_per_sample
+        )
 
-#         # Estimate parameters
-#         param_guess = settings["param_guess"]
-#         scale = settings["scale"]
-#         estimator.fit(U=U, Y=Y, param_guess=param_guess, param_scale=scale)
-#         param_est = estimator.coef_
+        # Estimate parameters
+        param_guess = settings["param_guess"]
+        scale = settings["scale"]
+        estimator.fit(U=U, Y=Y, param_guess=param_guess, param_scale=scale)
+        param_est = estimator.coef_
 
-#         assert ca.norm_inf(param_est * scale - settings["param_truth"]) < 1e-8
+        assert ca.norm_inf(param_est * scale - settings["param_truth"]) < 1e-8
 
-#         x_fit = estimator.model_fit_
+        x_fit = estimator.model_fit_
 
 
 # fs, n_steps_per_sample, N = (
