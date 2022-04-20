@@ -94,8 +94,8 @@ class LeastSquaresRegression:
 
         # Construct continuity condtion for multiple-shooting approach
         X = ca.MX.sym("X", n_states, n_shootings)
-        Xn = self.integrator._RungeKutta4__one_sample.map(n_shootings, "openmp")(
-            X, U, ca.repmat(self.model.param * param_scale, 1, n_shootings)
+        Xn = self.integrator._RungeKutta4__one_sample_ahead.map(n_shootings, "openmp")(
+            X, U, ca.repmat(self.model.parameter * param_scale, 1, n_shootings)
         )
         gaps = Xn[:, :-1] - X[:, 1:]
 
@@ -103,7 +103,7 @@ class LeastSquaresRegression:
         e = Y - Xn[0, :].T
 
         # stack all optimization variable into a vector
-        V = ca.veccat(self.model.param, X)
+        V = ca.veccat(self.model.parameter, X)
 
         nlp = {"x": V, "f": 0.5 * ca.dot(e, e), "g": ca.vec(gaps)}
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":  # when run for testing only
     import os
     import json
 
-    from skmid.models import generate_model_parameters
+    from skmid.models import generate_model_attributes
 
     # Load data and model settings
     CWD = os.getcwd()
@@ -147,7 +147,7 @@ if __name__ == "__main__":  # when run for testing only
         index_col=0,
     )
     Y = pd.read_csv(
-        filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "Y_data.csv"),
+        filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "y_data.csv"),
         index_col=0,
     )
 
@@ -158,19 +158,17 @@ if __name__ == "__main__":  # when run for testing only
         settings = json.load(j_object)
 
     # Define the model
-    (state, input, param) = generate_model_parameters(nstate=2, ninput=1, nparam=4)
-
+    (state, input, param) = generate_model_attributes(
+        state_size=2, input_size=1, parameter_size=4
+    )
     y, dy = state[0], state[1]
     u = input[0]
-
     M, c, k, k_NL = param[0], param[1], param[2], param[3]
-
     rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
-
     model = DynamicModel(
-        states=state,
-        inputs=input,
-        param=param,
+        state=state,
+        input=input,
+        parameter=param,
         model_dynamics=rhs,
     )
 
