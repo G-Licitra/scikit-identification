@@ -175,7 +175,6 @@ class RungeKutta4:
 
             # if input is provided neglect n_steps prameter
             input = self.__validate_input(input)
-            self.input_ = input
 
         else:
             # time vector for simulation x_sim and y_sim

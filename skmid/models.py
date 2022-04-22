@@ -1,4 +1,5 @@
 from typing import Any
+from typing import List
 from typing import Union
 
 import casadi as ca
@@ -194,14 +195,14 @@ class DynamicModel:
     def __init__(
         self,
         *,
-        state=list[ca.casadi.MX],
-        input: Union[list[ca.casadi.MX], None] = None,
-        parameter: Union[list[ca.casadi.MX], None] = None,
-        model_dynamics=list[ca.casadi.MX],
-        output: Union[list[str], None] = None,
-        state_name: Union[list[str], None] = None,
-        input_name: Union[list[str], None] = None,
-        parameter_name: Union[list[str], None] = None,
+        state=List[ca.casadi.MX],
+        input: Union[List[ca.casadi.MX], None] = None,
+        parameter: Union[List[ca.casadi.MX], None] = None,
+        model_dynamics=List[ca.casadi.MX],
+        output: Union[List[str], None] = None,
+        state_name: Union[List[str], None] = None,
+        input_name: Union[List[str], None] = None,
+        parameter_name: Union[List[str], None] = None,
     ):
 
         self.state = state
