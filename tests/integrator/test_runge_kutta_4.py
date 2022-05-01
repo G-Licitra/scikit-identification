@@ -1,10 +1,11 @@
 import json
 import os
+import warnings
 
 import casadi as ca
 import numpy as np
 import pandas as pd
-import pandas.util.testing as pdt
+import pandas.testing as pdt
 import pytest
 from scipy.signal import chirp
 
@@ -71,6 +72,19 @@ def generate_step_signal():
     return (df_input, fs)
 
 
+@pytest.fixture
+def generate_inpulse_signal():
+    """Generate Impulse input signal"""
+
+    N = 500  # Number of samples
+    fs = 50  # Sampling frequency [hz]
+    t = np.linspace(0, (N - 1) * (1 / fs), N)
+    df_input = pd.DataFrame(index=t).assign(inpulse=np.zeros(N))
+    df_input.iloc[0] = 1
+
+    return (df_input, fs)
+
+
 class TestRungeKutta4:
     """Test class for function generate_model_parameters."""
 
@@ -81,6 +95,7 @@ class TestRungeKutta4:
             state_size=1, input_size=0, parameter_size=0
         )
 
+        # initialize first-order model
         tau = 1
         sys = DynamicModel(state=x, model_dynamics=[-(1 / tau) * x])
 
@@ -115,6 +130,7 @@ class TestRungeKutta4:
 
         (df_input, fs) = generate_step_signal
 
+        # initialize first-order model
         (x, u, _) = generate_model_attributes(
             state_size=1, input_size=1, parameter_size=0
         )
@@ -217,3 +233,56 @@ class TestRungeKutta4:
 
         # check model consistency: convergence with no bias
         assert df_input.iloc[-1].values == pytest.approx(df_X.iloc[-1].values)
+
+    def test_different_format_input(self, generate_inpulse_signal):
+        """."""
+
+        (df_input, fs) = generate_inpulse_signal
+
+        (x, u, _) = generate_model_attributes(
+            state_size=1, input_size=1, parameter_size=0
+        )
+
+        tau, kp = 1, 1
+        sys = DynamicModel(
+            state=x, input=u, model_dynamics=[-(1 / tau) * x + (kp / tau) * u]
+        )
+
+        rk4 = RungeKutta4(model=sys, fs=fs)
+
+        input_dict = {
+            "dataframe": df_input,
+            "dataframe_with_non_consistent_fs": df_input.reset_index(drop=True),
+            "series": df_input.iloc[:, 0],
+            "numpy_array": df_input.values,
+            "numpy_array_1dim": df_input.values.squeeze(),
+        }
+
+        for format, input in input_dict.items():
+            message = f"Test failed with input format {format}"
+
+            _ = rk4.simulate(initial_condition=[0], input=input)
+
+            df_X = rk4.state_sim_
+            df_Y = rk4.output_sim_
+
+            # check equality of dataframe
+            assert isinstance(df_X, pd.DataFrame), message
+            assert isinstance(df_Y, pd.DataFrame), message
+
+            pdt.assert_frame_equal(df_X, df_Y)
+
+            # check size of dataframe
+            assert len(df_X) == len(df_input) + 1, message
+            assert len(df_Y) == len(df_input) + 1, message
+
+            # check no missing values
+            assert df_X.notna().all().values, message
+            assert df_Y.notna().all().values, message
+
+            # check model consistency: convergence with no bias
+            assert df_input.iloc[-1].values == pytest.approx(
+                df_X.iloc[-1].values, rel=1e-7, abs=1e-6
+            ), message
+
+        # initialize second-order model

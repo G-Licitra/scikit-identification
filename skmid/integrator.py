@@ -243,7 +243,9 @@ class RungeKutta4:
                 data=input, index=self.time_[:-1], columns=self.model.input_name
             )
 
-        if isinstance(input, pd.DataFrame):  # check if input is a dataframe
+        if isinstance(input, pd.DataFrame) or isinstance(
+            input, pd.Series
+        ):  # check if input is a dataframe
 
             if isinstance(input, pd.Series):  # check if input is a series
                 input = input.to_frame()
@@ -251,16 +253,16 @@ class RungeKutta4:
             if np.mean(np.diff(input.index)) != 1 / self.fs:
                 # Detect sample frequency mismatch
                 input.index = self.time_[:-1]
-                warnings.warn(
-                    f"""The input index has a different fs than specified in the object.
+                print(
+                    f"""INFO:The input index has a different fs than specified in the object.
                                   The input index has been modified by using fs={self.fs} Hz.
                                 """
                 )
 
             if not (set(input.columns) == set(self.model.input_name)):
                 # Detect input name mismatch
-                warnings.warn(
-                    f"""The input names is not consistent with the model input.
+                print(
+                    f"""INFO:The input names is not consistent with the model input.
                                         the simulation has considered the input as if they were {self.model.input_name}.
                                      """
                 )
