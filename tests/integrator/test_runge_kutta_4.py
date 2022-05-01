@@ -258,10 +258,10 @@ class TestRungeKutta4:
             "numpy_array_1dim": df_input.values.squeeze(),
         }
 
-        for format, input in input_dict.items():
+        for format, input_ in input_dict.items():
             message = f"Test failed with input format {format}"
 
-            _ = rk4.simulate(initial_condition=[0], input=input)
+            _ = rk4.simulate(initial_condition=[0], input=input_)
 
             df_X = rk4.state_sim_
             df_Y = rk4.output_sim_
@@ -285,4 +285,91 @@ class TestRungeKutta4:
                 df_X.iloc[-1].values, rel=1e-7, abs=1e-6
             ), message
 
-        # initialize second-order model
+    def test_mimo_system(self):
+
+        # generate dirac impulse
+        N = 3000  # Number of samples
+        fs = 50  # Sampling frequency [hz]
+        t = np.linspace(0, (N - 1) * (1 / fs), N)
+        df_input = pd.DataFrame(
+            data=np.zeros(shape=(N, 2)), columns=["u1", "u2"], index=t
+        )
+        df_input.iloc[0, :] = [0.1, -0.1]
+
+        (x, u, param) = generate_model_attributes(
+            state_size=2, input_size=2, parameter_size=2
+        )
+
+        x1, x2 = x[0], x[1]
+        u1, u2 = u[0], u[1]
+        k1, k2 = param[0], param[1]
+
+        # chemical reactor: mimo
+        rhs = [u1 - k1 * x1, u1 * u2 / x1 - u1 * x2 / x1 - k2 * x2]
+
+        sys = DynamicModel(
+            state=x,
+            input=u,
+            parameter=param,
+            model_dynamics=rhs,
+            parameter_name=["k1", "k2"],
+        )
+
+        rk4 = RungeKutta4(model=sys, fs=fs)
+
+        input_dict = {
+            "dataframe": df_input,
+            "dataframe_with_non_consistent_fs": df_input.reset_index(drop=True),
+            "numpy_array": df_input.values,
+        }
+
+        for format, input_ in input_dict.items():
+            message = f"Test failed with input format {format}"
+
+            _ = rk4.simulate(
+                initial_condition=[-0.15, 0.1], input=input_, parameter=[0.1, 0.5]
+            )
+
+            df_X = rk4.state_sim_
+            df_Y = rk4.output_sim_
+
+            # check equality of dataframe
+            assert isinstance(df_X, pd.DataFrame), message
+            assert isinstance(df_Y, pd.DataFrame), message
+
+            pdt.assert_frame_equal(df_X, df_Y)
+
+            # check size of dataframe
+            assert len(df_X) == len(df_input) + 1, message
+            assert len(df_Y) == len(df_input) + 1, message
+
+            # check no missing values
+            assert df_X.notna().all().all(), message
+            assert df_Y.notna().all().all(), message
+
+            # check model consistency: convergence with no bias
+            assert df_input.iloc[-1].values == pytest.approx(
+                df_X.iloc[-1].values, rel=1e-3, abs=1e-3
+            ), message
+
+    def test_input_sample_frequency(self):
+
+        (x, u, _) = generate_model_attributes(
+            state_size=1, input_size=1, parameter_size=0
+        )
+
+        tau, kp = 1, 1
+        sys = DynamicModel(
+            state=x, input=u, model_dynamics=[-(1 / tau) * x + (kp / tau) * u]
+        )
+
+        with pytest.raises(ValueError):
+            _ = RungeKutta4(model=sys, fs=-12)
+
+            _ = RungeKutta4(model=sys, fs=0)
+
+            _ = RungeKutta4(model=sys, fs=50, n_steps_per_sample=0)
+
+            _ = RungeKutta4(model=sys, fs=50, n_steps_per_sample=0.1)
+
+            _ = RungeKutta4(model=sys, fs=50, n_steps_per_sample=-np.sqrt(0.1))

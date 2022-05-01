@@ -1,5 +1,7 @@
 #%%
 import warnings
+from typing import List
+from typing import Union
 
 import casadi as ca
 import numpy as np
@@ -42,6 +44,13 @@ class RungeKutta4:
     def __init__(
         self, *, model: DynamicModel, fs: int = 1, n_steps_per_sample: int = 1
     ):
+
+        # check input consistency
+        if fs <= 0:
+            raise ValueError("fs and n_steps_per_sample must be positive.")
+
+        if n_steps_per_sample <= 0:
+            raise ValueError("n_steps_per_sample must be positive integer.")
 
         dt = 1 / fs / n_steps_per_sample
         self.fs = fs  # frequency sample
@@ -162,7 +171,21 @@ class RungeKutta4:
 
         self.__one_sample_ahead = one_sample_ahead
 
-    def simulate(self, *, initial_condition, input=None, parameter=None, n_steps=100):
+    def simulate(
+        self,
+        initial_condition: Union[List[str], None] = None,
+        input=None,
+        parameter=None,
+        n_steps=100,
+    ):
+
+        if initial_condition is None:
+            # default initial condition
+            initial_condition = self.model._DynamicModel__nx * [0]
+        elif len(initial_condition) != self.model._DynamicModel__nx:
+            raise ValueError(
+                "Initial condition must have the same dimension as the model"
+            )
 
         if input is not None:
 
@@ -220,6 +243,12 @@ class RungeKutta4:
         else:
             # forward simulation is numeric
             state_sim = np.array(state_sim)
+
+            # check if forward simulation is diverged
+            if np.isnan(state_sim).any():
+                print(
+                    "INFO: Forward simulation nan values, hence, it may have diverged."
+                )
 
             # pack differential state x attaching initial condition x0
             self.state_sim_ = pd.DataFrame(
