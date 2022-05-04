@@ -236,7 +236,11 @@ class LeastSquaresRegression:
         gaps = Xn[:, :-1] - X[:, 1:]
 
         # Construct cost function
-        e = Y_num - Xn[0, :].T
+
+        # match index between state_name and output_name lists
+        index = [self.model.state_name.index(elem) for elem in self.model.output_name]
+
+        e = Y_num - Xn[index, :].T
 
         # stack all optimization variable into a vector
         V = ca.veccat(self.model.parameter, X)
