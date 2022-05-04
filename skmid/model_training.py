@@ -65,27 +65,120 @@ class LeastSquaresRegression:
         model: DynamicModel,
         fs: int = 1,
         n_steps_per_sample: int = 1,
-        strategy: str = "multiple-shooting"
+        strategy: str = "multiple-shooting",
     ):
+
         self.model = model
         self.fs = fs  # frequency sample
         self.n_steps_per_sample = n_steps_per_sample
         self.strategy = strategy
 
+        self.__check_parameter_class_consistency()
+
         self.integrator = RungeKutta4(
             model=model, fs=fs, n_steps_per_sample=n_steps_per_sample
         )
 
-    def fit(self, *, U=None, Y, param_guess=None, param_scale=None):
+    def __check_parameter_class_consistency(self):
+
+        if not isinstance(self.model, DynamicModel):
+            raise ValueError(
+                "model input is expected to receive as input DynamicModel object."
+            )
+        if self.fs <= 0:
+            raise ValueError("fs and n_steps_per_sample must be positive.")
+
+        if self.n_steps_per_sample <= 0:
+            raise ValueError("n_steps_per_sample must be positive integer.")
+
+    def __check_parameter_fit_method_consistency(self, U, Y):
+
+        if isinstance(U, pd.DataFrame):
+            U = U.values.T
+        elif isinstance(U, pd.Series):
+            U = U.values.reshape(1, -1)
+        elif isinstance(U, np.ndarray) and (U.ndim == 1):
+            U = U.reshape(1, -1).T
+        elif isinstance(U, np.ndarray) and (U.ndim == 2):
+            U = U.T
+        else:
+            raise ValueError("U input can a pandas DataFrame/Series or a Numpy array.")
+
+        # prepare Y and discard initial condition
+        if isinstance(Y, pd.DataFrame):
+            Y = Y.values[1:]
+        elif isinstance(U, pd.Series):
+            Y = Y.values.reshape(1, -1)[1:]
+        elif isinstance(U, np.ndarray) and (U.ndim == 1):
+            Y = Y.reshape(1, -1)[1:]
+        elif isinstance(U, np.ndarray) and (U.ndim == 2):
+            Y = Y.T[1:]
+        else:
+            raise ValueError("Y input can a pandas DataFrame/Series or a Numpy array.")
+
+        if (U is not None) and (U.shape[1] != Y.shape[0]):
+            raise ValueError(
+                f"Inconsistent Data size between Y and U. It is expected dim(Y)=N+1 and dim(U)=N. Currently dim(Y)={Y.shape[0]} and dim(U)={U.shape[1]}."
+            )
+
+        if len(self.model.output_name) != Y.shape[1]:
+            raise ValueError(
+                f"Data Y (dim(Y)={Y.shape[1]}) is not consistent with the model output (dim={len(self.model.output_name)})."
+            )
+
+        if self.__n_input != U.shape[0]:
+            raise ValueError(
+                f"Data U (dim(U)={U.shape[1]}) is not consistent with the model input (dim={len(self.model.output_name)})."
+            )
+
+        if self.model.parameter is None:
+            raise ValueError(
+                "Dynamic model has no parameter. Please set the parameter before fitting."
+            )
+
+        if (
+            (self.__param_guess is not None)
+            and (self.__param_guess is not list)
+            and (len(self.__param_guess) != self.__n_param)
+        ):
+            raise ValueError(
+                "param_guess is expected to be a list with lenght equal to model:parameter."
+            )
+
+        if (
+            (self.__param_scale is not None)
+            and (self.__param_scale is not list)
+            and (len(self.__param_scale) != self.__n_param)
+        ):
+            raise ValueError(
+                "param_scale is expected to be a list with lenght equal to model:parameter."
+            )
 
         # Prepare U and Y
-        U = U.values.T
-        Y = Y.values[1:]  # discard initial condition
+        # U = U.values.T (1, 10000)
+        # Y = Y.values[1:] (10000, 1) # discard initial condition
+
+        return (U, Y)
+
+    def fit(self, *, U=None, Y, param_guess=None, param_scale=None, state_guess=None):
 
         # Retrive number of model parameters and states
-        n_states = self.model._DynamicModel__nx
-        n_param = self.model._DynamicModel__np
-        n_shootings = len(Y)  # equal to the time series length
+        self.__n_state = self.model._DynamicModel__nx
+        self.__n_param = self.model._DynamicModel__np
+        self.__n_input = self.model._DynamicModel__nu
+        self.__n_output = len(self.model.output_name)
+        self.__param_guess = param_guess
+        self.__param_scale = param_scale
+
+        (U, Y) = self.__check_parameter_fit_method_consistency(U, Y)
+
+        self.__n_shootings = len(Y)  # equal to the time series length
+
+        if state_guess is None and (self.__n_output == self.__n_state):
+            # case full state available with no initial state guess
+            state_guess = Y
+
+        # __check_param_input(self, Y, U, )
 
         # Note:
         # dim(U) = (n_inputs, n_shootings): 'numpy.ndarray'
@@ -93,9 +186,13 @@ class LeastSquaresRegression:
         # dim(Y) = (n_shootings, n_outputs): 'numpy.ndarray'
 
         # Construct continuity condtion for multiple-shooting approach
-        X = ca.MX.sym("X", n_states, n_shootings)
-        Xn = self.integrator._RungeKutta4__one_sample_ahead.map(n_shootings, "openmp")(
-            X, U, ca.repmat(self.model.parameter * param_scale, 1, n_shootings)
+        X = ca.MX.sym("X", self.__n_state, self.__n_shootings)
+        Xn = self.integrator._RungeKutta4__one_sample_ahead.map(
+            self.__n_shootings, "openmp"
+        )(
+            X,
+            U,
+            ca.repmat(self.model.parameter * self.__param_scale, 1, self.__n_shootings),
         )
         gaps = Xn[:, :-1] - X[:, 1:]
 
@@ -108,18 +205,21 @@ class LeastSquaresRegression:
         nlp = {"x": V, "f": 0.5 * ca.dot(e, e), "g": ca.vec(gaps)}
 
         # Multipleshooting allows for careful initialization
-        yd = np.diff(Y, axis=0) * self.fs
-        X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
+        # yd = np.diff(Y, axis=0) * self.fs
+        # X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
+        X_guess = state_guess.T
 
-        x0 = ca.veccat(param_guess, X_guess)
+        x0 = ca.veccat(self.__param_guess, X_guess)
         solver = _gauss_newton(e, nlp, V)
         sol = solver(x0=x0, lbg=0, ubg=0)
 
         # array of shape (n_features, ) or (n_targets, n_features)
-        self.coef_ = np.squeeze(sol["x"][:n_param].full())
+        self.coef_ = np.squeeze(sol["x"][: self.__n_param].full())
         # TODO add index to dataframe
         self.model_fit_ = pd.DataFrame(
-            data=sol["x"][n_param:].full().reshape((n_shootings, n_states)),
+            data=sol["x"][self.__n_param :]
+            .full()
+            .reshape((self.__n_shootings, self.__n_state)),
             columns=self.model.state_name,
         )
 
@@ -169,6 +269,8 @@ if __name__ == "__main__":  # when run for testing only
         state=state,
         input=input,
         parameter=param,
+        state_name=["y", "dy"],
+        output=["y"],
         model_dynamics=rhs,
     )
 
@@ -182,7 +284,20 @@ if __name__ == "__main__":  # when run for testing only
     # Estimate parameters
     param_guess = settings["param_guess"]
     scale = settings["scale"]
-    estimator.fit(U=U, Y=Y, param_guess=param_guess, param_scale=scale)
+    # state_guess = Y, ca.vertcat(yd, yd[-1])
+
+    # create initial condition
+    Yg = Y.values[1:]
+    yd = np.diff(Yg, axis=0) * fs
+    yd = np.concatenate([yd, yd[-1].reshape(1, -1)], axis=0)
+    state_guess = np.concatenate([Yg, yd], axis=1)
+
+    # X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
+    # (2, 10000)
+
+    estimator.fit(
+        U=U, Y=Y, param_guess=param_guess, param_scale=scale, state_guess=state_guess
+    )
     param_est = estimator.coef_
 
     assert ca.norm_inf(param_est * scale - settings["param_truth"]) < 1e-8
