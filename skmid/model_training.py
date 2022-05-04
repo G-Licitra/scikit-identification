@@ -187,15 +187,35 @@ class LeastSquaresRegression:
         self.__param_guess = param_guess
         self.__param_scale = param_scale
 
-        (U, Y) = self.__check_parameter_fit_method_consistency(U, Y)
+        (U_num, Y_num) = self.__check_parameter_fit_method_consistency(U, Y)
 
-        self.__n_shootings = len(Y)  # equal to the time series length
+        self.__n_shootings = len(Y_num)  # equal to the time series length
 
         # state_guess = self.__construct_state_guess(state_guess)
 
         if state_guess is None and (self.__n_output == self.__n_state):
             # case full state available with no initial state guess
             state_guess = Y
+        elif state_guess is not None:
+            # check if state_guess is consistent with model
+            if (
+                state_guess.shape[0] != self.__n_shootings
+                or state_guess.shape[1] != self.__n_state
+            ):
+                raise ValueError(
+                    f"state_guess is expected to be a {self.__n_shootings}x{self.__n_state} matrix."
+                )
+        else:
+            # warm initialization using the best knowledge (y)
+            state_guess = pd.DataFrame(
+                data=np.zeros((self.__n_shootings, self.__n_state)),
+                columns=self.model.state_name,
+            )
+
+            for l in self.model.output_name:
+                state_guess[l] = Y[l]
+
+            state_guess = state_guess.values
 
         # __check_param_input(self, Y, U, )
 
@@ -210,13 +230,13 @@ class LeastSquaresRegression:
             self.__n_shootings, "openmp"
         )(
             X,
-            U,
+            U_num,
             ca.repmat(self.model.parameter * self.__param_scale, 1, self.__n_shootings),
         )
         gaps = Xn[:, :-1] - X[:, 1:]
 
         # Construct cost function
-        e = Y - Xn[0, :].T
+        e = Y_num - Xn[0, :].T
 
         # stack all optimization variable into a vector
         V = ca.veccat(self.model.parameter, X)
@@ -312,6 +332,7 @@ if __name__ == "__main__":  # when run for testing only
     yd = np.diff(Yg, axis=0) * fs
     yd = np.concatenate([yd, yd[-1].reshape(1, -1)], axis=0)
     state_guess = np.concatenate([Yg, yd], axis=1)
+    # ToDO cast state_guess to pd.DataFrame
 
     # X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
     # (2, 10000)
