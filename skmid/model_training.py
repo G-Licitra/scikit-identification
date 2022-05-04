@@ -1,3 +1,6 @@
+from typing import List
+from typing import Union
+
 import casadi as ca
 import matplotlib.pyplot as plt
 import numpy as np
@@ -91,44 +94,41 @@ class LeastSquaresRegression:
         if self.n_steps_per_sample <= 0:
             raise ValueError("n_steps_per_sample must be positive integer.")
 
-    def __check_parameter_fit_method_consistency(self, U, Y):
+    def __check_parameter_fit_method_consistency(
+        self, U: Union[pd.DataFrame, pd.Series], Y: Union[pd.DataFrame, pd.Series]
+    ):
 
-        if isinstance(U, pd.DataFrame):
-            U = U.values.T
-        elif isinstance(U, pd.Series):
-            U = U.values.reshape(1, -1)
-        elif isinstance(U, np.ndarray) and (U.ndim == 1):
-            U = U.reshape(1, -1).T
-        elif isinstance(U, np.ndarray) and (U.ndim == 2):
-            U = U.T
-        else:
-            raise ValueError("U input can a pandas DataFrame/Series or a Numpy array.")
-
-        # prepare Y and discard initial condition
-        if isinstance(Y, pd.DataFrame):
-            Y = Y.values[1:]
-        elif isinstance(U, pd.Series):
-            Y = Y.values.reshape(1, -1)[1:]
-        elif isinstance(U, np.ndarray) and (U.ndim == 1):
-            Y = Y.reshape(1, -1)[1:]
-        elif isinstance(U, np.ndarray) and (U.ndim == 2):
-            Y = Y.T[1:]
-        else:
-            raise ValueError("Y input can a pandas DataFrame/Series or a Numpy array.")
-
-        if (U is not None) and (U.shape[1] != Y.shape[0]):
+        if not isinstance(U, (pd.DataFrame, pd.Series)):
             raise ValueError(
-                f"Inconsistent Data size between Y and U. It is expected dim(Y)=N+1 and dim(U)=N. Currently dim(Y)={Y.shape[0]} and dim(U)={U.shape[1]}."
+                "U input is expected to receive as input pandas.DataFrame or pandas.Series object."
+            )
+        if not isinstance(Y, (pd.DataFrame, pd.Series)):
+            raise ValueError(
+                "Y input is expected to receive as input pandas.DataFrame or pandas.Series object."
+            )
+
+        # cast pandas.Series to pandas.DataFrame
+        if isinstance(U, pd.Series):
+            U = U.to_frame()
+
+        # cast pandas.Series to pandas.DataFrame
+        if isinstance(Y, pd.Series):
+            Y = Y.to_frame()
+
+        # check dimention consistency between U and Y
+        if (U is not None) and (len(U) + 1 != len(Y)):
+            raise ValueError(
+                f"Inconsistent Data size between Y and U. It is expected dim(Y)=N+1 and dim(U)=N. Currently dim(Y)={len(Y)} and dim(U)={len(U)}."
             )
 
         if len(self.model.output_name) != Y.shape[1]:
             raise ValueError(
-                f"Data Y (dim(Y)={Y.shape[1]}) is not consistent with the model output (dim={len(self.model.output_name)})."
+                f"The number of columns of Y must be equal to the number of model output. Currently Y has {Y.shape[1]} columns while the model has {len(self.model.output_name)} output."
             )
 
-        if self.__n_input != U.shape[0]:
+        if self.__n_input != U.shape[1]:
             raise ValueError(
-                f"Data U (dim(U)={U.shape[1]}) is not consistent with the model input (dim={len(self.model.output_name)})."
+                f"The number of columns of U must be equal to the number of model input. Currently U has {U.shape[1]} columns while the model has {len(self.model.input_name)} input."
             )
 
         if self.model.parameter is None:
@@ -154,13 +154,30 @@ class LeastSquaresRegression:
                 "param_scale is expected to be a list with lenght equal to model:parameter."
             )
 
+        # TODO: add check to input name
+        # match name between U and model:input_name
+        U = U.filter(items=self.model.input_name)
+        Y = Y.filter(items=self.model.output_name)
+
+        # discard initial condition in Y and prepare U and Y for fitting
+        Y = Y.values[1:]
+        U = U.values.T
+
         # Prepare U and Y
         # U = U.values.T (1, 10000)
         # Y = Y.values[1:] (10000, 1) # discard initial condition
 
         return (U, Y)
 
-    def fit(self, *, U=None, Y, param_guess=None, param_scale=None, state_guess=None):
+    def fit(
+        self,
+        *,
+        U: Union[pd.DataFrame, pd.Series],
+        Y: Union[pd.DataFrame, pd.Series],
+        param_guess: Union[List[str], None] = None,
+        param_scale: Union[List[str], None] = None,
+        state_guess: Union[List[str], None] = None,
+    ):
 
         # Retrive number of model parameters and states
         self.__n_state = self.model._DynamicModel__nx
@@ -173,6 +190,8 @@ class LeastSquaresRegression:
         (U, Y) = self.__check_parameter_fit_method_consistency(U, Y)
 
         self.__n_shootings = len(Y)  # equal to the time series length
+
+        # state_guess = self.__construct_state_guess(state_guess)
 
         if state_guess is None and (self.__n_output == self.__n_state):
             # case full state available with no initial state guess
@@ -269,6 +288,8 @@ if __name__ == "__main__":  # when run for testing only
         state=state,
         input=input,
         parameter=param,
+        input_name=["u"],
+        parameter_name=["M", "c", "k", "k_NL"],
         state_name=["y", "dy"],
         output=["y"],
         model_dynamics=rhs,
