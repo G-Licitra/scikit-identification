@@ -1,3 +1,6 @@
+from typing import List
+from typing import Union
+
 import casadi as ca
 import matplotlib.pyplot as plt
 import numpy as np
@@ -65,27 +68,162 @@ class LeastSquaresRegression:
         model: DynamicModel,
         fs: int = 1,
         n_steps_per_sample: int = 1,
-        strategy: str = "multiple-shooting"
+        strategy: str = "multiple-shooting",
     ):
+
         self.model = model
         self.fs = fs  # frequency sample
         self.n_steps_per_sample = n_steps_per_sample
         self.strategy = strategy
 
+        self.__check_parameter_class_consistency()
+
         self.integrator = RungeKutta4(
             model=model, fs=fs, n_steps_per_sample=n_steps_per_sample
         )
 
-    def fit(self, *, U=None, Y, param_guess=None, param_scale=None):
+    def __check_parameter_class_consistency(self):
+
+        if not isinstance(self.model, DynamicModel):
+            raise ValueError(
+                "model input is expected to receive as input DynamicModel object."
+            )
+        if self.fs <= 0:
+            raise ValueError("fs and n_steps_per_sample must be positive.")
+
+        if self.n_steps_per_sample <= 0:
+            raise ValueError("n_steps_per_sample must be positive integer.")
+
+    def __construct_state_guess(self, state_guess, Y_num):
+
+        if state_guess is None and (self.__n_output == self.__n_state):
+            # case full state available with no initial state guess
+            state_guess = Y_num
+        elif state_guess is not None:
+            # check if state_guess is consistent with model
+            if (
+                state_guess.shape[0] != self.__n_shootings
+                or state_guess.shape[1] != self.__n_state
+            ):
+                raise ValueError(
+                    f"state_guess is expected to be a {self.__n_shootings}x{self.__n_state} matrix."
+                )
+        else:
+            # warm initialization using the best knowledge (y)
+            state_guess = pd.DataFrame(
+                data=np.zeros((self.__n_shootings, self.__n_state)),
+                columns=self.model.state_name,
+            )
+
+            for l in self.model.output_name:
+                state_guess[l] = Y[l]
+
+            state_guess = state_guess.values
+
+        return state_guess
+
+    def __check_parameter_fit_method_consistency(
+        self, U: Union[pd.DataFrame, pd.Series], Y: Union[pd.DataFrame, pd.Series]
+    ):
+
+        if not isinstance(U, (pd.DataFrame, pd.Series)):
+            raise ValueError(
+                "U input is expected to receive as input pandas.DataFrame or pandas.Series object."
+            )
+        if not isinstance(Y, (pd.DataFrame, pd.Series)):
+            raise ValueError(
+                "Y input is expected to receive as input pandas.DataFrame or pandas.Series object."
+            )
+
+        # cast pandas.Series to pandas.DataFrame
+        if isinstance(U, pd.Series):
+            U = U.to_frame()
+
+        # cast pandas.Series to pandas.DataFrame
+        if isinstance(Y, pd.Series):
+            Y = Y.to_frame()
+
+        # check dimention consistency between U and Y
+        if (U is not None) and (len(U) + 1 != len(Y)):
+            raise ValueError(
+                f"Inconsistent Data size between Y and U. It is expected dim(Y)=N+1 and dim(U)=N. Currently dim(Y)={len(Y)} and dim(U)={len(U)}."
+            )
+
+        if len(self.model.output_name) != Y.shape[1]:
+            raise ValueError(
+                f"The number of columns of Y must be equal to the number of model output. Currently Y has {Y.shape[1]} columns while the model has {len(self.model.output_name)} output."
+            )
+
+        if self.__n_input != U.shape[1]:
+            raise ValueError(
+                f"The number of columns of U must be equal to the number of model input. Currently U has {U.shape[1]} columns while the model has {len(self.model.input_name)} input."
+            )
+
+        if self.model.parameter is None:
+            raise ValueError(
+                "Dynamic model has no parameter. Please set the parameter before fitting."
+            )
+
+        if (
+            (self.__param_guess is not None)
+            and (self.__param_guess is not list)
+            and (len(self.__param_guess) != self.__n_param)
+        ):
+            raise ValueError(
+                "param_guess is expected to be a list with lenght equal to model:parameter."
+            )
+
+        if (
+            (self.__param_scale is not None)
+            and (self.__param_scale is not list)
+            and (len(self.__param_scale) != self.__n_param)
+        ):
+            raise ValueError(
+                "param_scale is expected to be a list with lenght equal to model:parameter."
+            )
+
+        # TODO: add check to input name
+        # match name between U and model:input_name
+        U = U.filter(items=self.model.input_name)
+        Y = Y.filter(items=self.model.output_name)
+
+        # discard initial condition in Y and prepare U and Y for fitting
+        Y = Y.values[1:]
+        U = U.values.T
 
         # Prepare U and Y
-        U = U.values.T
-        Y = Y.values[1:]  # discard initial condition
+        # U = U.values.T (1, 10000)
+        # Y = Y.values[1:] (10000, 1) # discard initial condition
+
+        return (U, Y)
+
+    def fit(
+        self,
+        *,
+        U: Union[pd.DataFrame, pd.Series],
+        Y: Union[pd.DataFrame, pd.Series],
+        param_guess: Union[List[str], None] = None,
+        param_scale: Union[List[str], None] = None,
+        state_guess: Union[List[str], None] = None,
+    ):
 
         # Retrive number of model parameters and states
-        n_states = self.model._DynamicModel__nx
-        n_param = self.model._DynamicModel__np
-        n_shootings = len(Y)  # equal to the time series length
+        self.__n_state = self.model._DynamicModel__nx
+        self.__n_param = self.model._DynamicModel__np
+        self.__n_input = self.model._DynamicModel__nu
+        self.__n_output = len(self.model.output_name)
+        self.__param_guess = param_guess
+        self.__param_scale = (
+            param_scale if param_scale is not None else [1.0] * self.__n_param
+        )
+
+        (U_num, Y_num) = self.__check_parameter_fit_method_consistency(U, Y)
+
+        self.__n_shootings = len(Y_num)  # equal to the time series length
+
+        state_guess = self.__construct_state_guess(state_guess, Y_num)
+
+        # __check_param_input(self, Y, U, )
 
         # Note:
         # dim(U) = (n_inputs, n_shootings): 'numpy.ndarray'
@@ -93,40 +231,80 @@ class LeastSquaresRegression:
         # dim(Y) = (n_shootings, n_outputs): 'numpy.ndarray'
 
         # Construct continuity condtion for multiple-shooting approach
-        X = ca.MX.sym("X", n_states, n_shootings)
-        Xn = self.integrator._RungeKutta4__one_sample.map(n_shootings, "openmp")(
-            X, U, ca.repmat(self.model.param * param_scale, 1, n_shootings)
+        X = ca.MX.sym("X", self.__n_state, self.__n_shootings)
+        Xn = self.integrator._RungeKutta4__one_sample_ahead.map(
+            self.__n_shootings, "openmp"
+        )(
+            X,
+            U_num,
+            ca.repmat(self.model.parameter * self.__param_scale, 1, self.__n_shootings),
         )
         gaps = Xn[:, :-1] - X[:, 1:]
 
         # Construct cost function
-        e = Y - Xn[0, :].T
+
+        # match index between state_name and output_name lists
+        index = [self.model.state_name.index(elem) for elem in self.model.output_name]
+
+        e = Y_num - Xn[index, :].T
 
         # stack all optimization variable into a vector
-        V = ca.veccat(self.model.param, X)
+        V = ca.veccat(self.model.parameter, X)
 
         nlp = {"x": V, "f": 0.5 * ca.dot(e, e), "g": ca.vec(gaps)}
 
         # Multipleshooting allows for careful initialization
-        yd = np.diff(Y, axis=0) * self.fs
-        X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
+        # yd = np.diff(Y, axis=0) * self.fs
+        # X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
+        X_guess = state_guess.T
 
-        x0 = ca.veccat(param_guess, X_guess)
+        x0 = ca.veccat(self.__param_guess, X_guess)
         solver = _gauss_newton(e, nlp, V)
         sol = solver(x0=x0, lbg=0, ubg=0)
 
         # array of shape (n_features, ) or (n_targets, n_features)
-        self.coef_ = np.squeeze(sol["x"][:n_param].full())
-        # TODO add index to dataframe
+        self.coef_ = np.squeeze(sol["x"][: self.__n_param].full()) * self.__param_scale
+
+        # TODO add initial condition
         self.model_fit_ = pd.DataFrame(
-            data=sol["x"][n_param:].full().reshape((n_shootings, n_states)),
+            data=sol["x"][self.__n_param :]
+            .full()
+            .reshape((self.__n_shootings, self.__n_state)),
             columns=self.model.state_name,
+            index=Y.index[:-1],
         )
 
-    def predict(self, U, Y):
-        pass
+    def predict(self, U, initial_condition=None, output="output"):
+
+        predictor = RungeKutta4(
+            model=self.model, fs=self.fs, n_steps_per_sample=self.n_steps_per_sample
+        )
+
+        _ = predictor.simulate(
+            initial_condition=initial_condition, input=U, parameter=self.coef_
+        )
+
+        if output == "output":
+            return predictor.output_sim_
+        elif output == "full-state":
+            return predictor.state_sim_
+        else:
+            raise ValueError('output must be either "output" or "full-state"')
 
     def summary(self):
+
+        # create statistics
+
+        # Create dict
+        # stats = {'parameter': self.model.param_name,
+        #          'coef': self.coef_
+        #          'se': beta_se,
+        #          'T': T,
+        #          'pval': pval,
+        #          'r2': r2,
+        #          'adj_r2': adj_r2,
+        #          ll_name: ll,
+        #          ul_name: ul}
         pass
 
 
@@ -135,7 +313,7 @@ if __name__ == "__main__":  # when run for testing only
     import os
     import json
 
-    from skmid.models import generate_model_parameters
+    from skmid.models import generate_model_attributes
 
     # Load data and model settings
     CWD = os.getcwd()
@@ -147,7 +325,7 @@ if __name__ == "__main__":  # when run for testing only
         index_col=0,
     )
     Y = pd.read_csv(
-        filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "Y_data.csv"),
+        filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "y_data.csv"),
         index_col=0,
     )
 
@@ -158,19 +336,22 @@ if __name__ == "__main__":  # when run for testing only
         settings = json.load(j_object)
 
     # Define the model
-    (state, input, param) = generate_model_parameters(nstate=2, ninput=1, nparam=4)
-
+    (state, input, param) = generate_model_attributes(
+        state_size=2, input_size=1, parameter_size=4
+    )
     y, dy = state[0], state[1]
     u = input[0]
-
     M, c, k, k_NL = param[0], param[1], param[2], param[3]
-
     rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
 
     model = DynamicModel(
-        states=state,
-        inputs=input,
-        param=param,
+        state=state,
+        input=input,
+        parameter=param,
+        input_name=["u"],
+        parameter_name=["M", "c", "k", "k_NL"],
+        state_name=["y", "dy"],
+        output=["y"],
         model_dynamics=rhs,
     )
 
@@ -184,9 +365,25 @@ if __name__ == "__main__":  # when run for testing only
     # Estimate parameters
     param_guess = settings["param_guess"]
     scale = settings["scale"]
-    estimator.fit(U=U, Y=Y, param_guess=param_guess, param_scale=scale)
+    # state_guess = Y, ca.vertcat(yd, yd[-1])
+
+    # create initial condition
+    Yg = Y.values[1:]
+    yd = np.diff(Yg, axis=0) * fs
+    yd = np.concatenate([yd, yd[-1].reshape(1, -1)], axis=0)
+    state_guess = np.concatenate([Yg, yd], axis=1)
+    # ToDO cast state_guess to pd.DataFrame
+
+    # X_guess = ca.horzcat(Y, ca.vertcat(yd, yd[-1])).T
+    # (2, 10000)
+
+    estimator.fit(
+        U=U, Y=Y, param_guess=param_guess, param_scale=scale, state_guess=state_guess
+    )
     param_est = estimator.coef_
 
-    assert ca.norm_inf(param_est * scale - settings["param_truth"]) < 1e-8
+    y_fit = estimator.predict(U=U, initial_condition=list(state_guess[0, :]))
+
+    assert ca.norm_inf(param_est - settings["param_truth"]) < 1e-8
 
     x_fit = estimator.model_fit_

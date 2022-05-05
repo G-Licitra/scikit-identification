@@ -1,5 +1,7 @@
 # %%
 import warnings
+from typing import List
+from typing import Union
 
 import casadi as ca
 import numpy as np
@@ -42,6 +44,13 @@ class RungeKutta4:
     def __init__(
         self, *, model: DynamicModel, fs: int = 1, n_steps_per_sample: int = 1
     ):
+
+        # check input consistency
+        if fs <= 0:
+            raise ValueError("fs and n_steps_per_sample must be positive.")
+
+        if n_steps_per_sample <= 0:
+            raise ValueError("n_steps_per_sample must be positive integer.")
 
         dt = 1 / fs / n_steps_per_sample
         self.fs = fs  # frequency sample
@@ -160,9 +169,23 @@ class RungeKutta4:
         else:
             raise ValueError("Model type not supported")
 
-        self.one_sample_ahead = one_sample_ahead
+        self.__one_sample_ahead = one_sample_ahead
 
-    def simulate(self, *, initial_condition, input=None, parameter=None, n_steps=100):
+    def simulate(
+        self,
+        initial_condition: Union[List[str], None] = None,
+        input=None,
+        parameter=None,
+        n_steps=100,
+    ):
+
+        if initial_condition is None:
+            # default initial condition
+            initial_condition = self.model._DynamicModel__nx * [0]
+        elif len(initial_condition) != self.model._DynamicModel__nx:
+            raise ValueError(
+                "Initial condition must have the same dimension as the model"
+            )
 
         if input is not None:
 
@@ -175,7 +198,6 @@ class RungeKutta4:
 
             # if input is provided neglect n_steps prameter
             input = self.__validate_input(input)
-            self.input_ = input
 
         else:
             # time vector for simulation x_sim and y_sim
@@ -184,7 +206,7 @@ class RungeKutta4:
             )
 
         # Propagate simulation for N steps and generate trajectory
-        k_sample_ahead = self.one_sample_ahead.mapaccum("x_simulation", n_steps)
+        k_sample_ahead = self.__one_sample_ahead.mapaccum("x_simulation", n_steps)
 
         if self.__model_type["struct"] == "f(x,u)":
             state_sim = k_sample_ahead(initial_condition, input.values.T)
@@ -222,6 +244,12 @@ class RungeKutta4:
             # forward simulation is numeric
             state_sim = np.array(state_sim)
 
+            # check if forward simulation is diverged
+            if np.isnan(state_sim).any():
+                print(
+                    "INFO: Forward simulation nan values, hence, it may have diverged."
+                )
+
             # pack differential state x attaching initial condition x0
             self.state_sim_ = pd.DataFrame(
                 data=np.concatenate(
@@ -245,7 +273,9 @@ class RungeKutta4:
                 columns=self.model.input_name
             )
 
-        if isinstance(input, pd.DataFrame):  # check if input is a dataframe
+        if isinstance(input, pd.DataFrame) or isinstance(
+            input, pd.Series
+        ):  # check if input is a dataframe
 
             if isinstance(input, pd.Series):  # check if input is a series
                 input = input.to_frame()
@@ -253,20 +283,18 @@ class RungeKutta4:
             if np.mean(np.diff(input.index)) != 1 / self.fs:
                 # Detect sample frequency mismatch
                 input.index = self.time_[:-1]
-                warnings.warn(
-                    f"""The input index has a different fs
-                    than specified in the object.
-                                  The input index has been
-                                  modified by using fs={self.fs} Hz.
+                print(
+                    f"""INFO:The input index has a different fs than specified in the object.
+                                  The input index has been modified by using fs={self.fs} Hz.
+
                                 """
                 )
 
             if not (set(input.columns) == set(self.model.input_name)):
                 # Detect input name mismatch
-                warnings.warn(
-                    f"""The input names is not consistent with the model input.
-                                        the simulation has considered the input
-                                        as if they were {self.model.input_name}.
+                print(
+                    f"""INFO:The input names is not consistent with the model input.
+                                        the simulation has considered the input as if they were {self.model.input_name}.
                                      """
                 )
                 input.columns = self.model.input_name
