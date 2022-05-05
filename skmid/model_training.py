@@ -94,6 +94,34 @@ class LeastSquaresRegression:
         if self.n_steps_per_sample <= 0:
             raise ValueError("n_steps_per_sample must be positive integer.")
 
+    def __construct_state_guess(self, state_guess):
+
+        if state_guess is None and (self.__n_output == self.__n_state):
+            # case full state available with no initial state guess
+            state_guess = Y
+        elif state_guess is not None:
+            # check if state_guess is consistent with model
+            if (
+                state_guess.shape[0] != self.__n_shootings
+                or state_guess.shape[1] != self.__n_state
+            ):
+                raise ValueError(
+                    f"state_guess is expected to be a {self.__n_shootings}x{self.__n_state} matrix."
+                )
+        else:
+            # warm initialization using the best knowledge (y)
+            state_guess = pd.DataFrame(
+                data=np.zeros((self.__n_shootings, self.__n_state)),
+                columns=self.model.state_name,
+            )
+
+            for l in self.model.output_name:
+                state_guess[l] = Y[l]
+
+            state_guess = state_guess.values
+
+        return state_guess
+
     def __check_parameter_fit_method_consistency(
         self, U: Union[pd.DataFrame, pd.Series], Y: Union[pd.DataFrame, pd.Series]
     ):
@@ -185,37 +213,15 @@ class LeastSquaresRegression:
         self.__n_input = self.model._DynamicModel__nu
         self.__n_output = len(self.model.output_name)
         self.__param_guess = param_guess
-        self.__param_scale = param_scale
+        self.__param_scale = (
+            param_scale if param_scale is not None else [1.0] * self.__n_param
+        )
 
         (U_num, Y_num) = self.__check_parameter_fit_method_consistency(U, Y)
 
         self.__n_shootings = len(Y_num)  # equal to the time series length
 
-        # state_guess = self.__construct_state_guess(state_guess)
-
-        if state_guess is None and (self.__n_output == self.__n_state):
-            # case full state available with no initial state guess
-            state_guess = Y
-        elif state_guess is not None:
-            # check if state_guess is consistent with model
-            if (
-                state_guess.shape[0] != self.__n_shootings
-                or state_guess.shape[1] != self.__n_state
-            ):
-                raise ValueError(
-                    f"state_guess is expected to be a {self.__n_shootings}x{self.__n_state} matrix."
-                )
-        else:
-            # warm initialization using the best knowledge (y)
-            state_guess = pd.DataFrame(
-                data=np.zeros((self.__n_shootings, self.__n_state)),
-                columns=self.model.state_name,
-            )
-
-            for l in self.model.output_name:
-                state_guess[l] = Y[l]
-
-            state_guess = state_guess.values
+        state_guess = self.__construct_state_guess(state_guess)
 
         # __check_param_input(self, Y, U, )
 
@@ -257,19 +263,48 @@ class LeastSquaresRegression:
         sol = solver(x0=x0, lbg=0, ubg=0)
 
         # array of shape (n_features, ) or (n_targets, n_features)
-        self.coef_ = np.squeeze(sol["x"][: self.__n_param].full())
-        # TODO add index to dataframe
+        self.coef_ = np.squeeze(sol["x"][: self.__n_param].full()) * self.__param_scale
+
+        # TODO add initial condition
         self.model_fit_ = pd.DataFrame(
             data=sol["x"][self.__n_param :]
             .full()
             .reshape((self.__n_shootings, self.__n_state)),
             columns=self.model.state_name,
+            index=Y.index[:-1],
         )
 
-    def predict(self, U, Y):
-        pass
+    def predict(self, U, initial_condition=None, output="output"):
+
+        predictor = RungeKutta4(
+            model=self.model, fs=self.fs, n_steps_per_sample=self.n_steps_per_sample
+        )
+
+        _ = predictor.simulate(
+            initial_condition=initial_condition, input=U, parameter=self.coef_
+        )
+
+        if output == "output":
+            return predictor.output_sim_
+        elif output == "full-state":
+            return predictor.state_sim_
+        else:
+            raise ValueError('output must be either "output" or "full-state"')
 
     def summary(self):
+
+        # create statistics
+
+        # Create dict
+        # stats = {'parameter': self.model.param_name,
+        #          'coef': self.coef_
+        #          'se': beta_se,
+        #          'T': T,
+        #          'pval': pval,
+        #          'r2': r2,
+        #          'adj_r2': adj_r2,
+        #          ll_name: ll,
+        #          ul_name: ul}
         pass
 
 
@@ -308,6 +343,7 @@ if __name__ == "__main__":  # when run for testing only
     u = input[0]
     M, c, k, k_NL = param[0], param[1], param[2], param[3]
     rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
+
     model = DynamicModel(
         state=state,
         input=input,
@@ -346,6 +382,8 @@ if __name__ == "__main__":  # when run for testing only
     )
     param_est = estimator.coef_
 
-    assert ca.norm_inf(param_est * scale - settings["param_truth"]) < 1e-8
+    y_fit = estimator.predict(U=U, initial_condition=list(state_guess[0, :]))
+
+    assert ca.norm_inf(param_est - settings["param_truth"]) < 1e-8
 
     x_fit = estimator.model_fit_
