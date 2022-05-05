@@ -6,4 +6,5 @@
         "python.testing.pytestEnabled": true,
         "python.envFile": "${workspaceFolder}/.vscode/.env",
         "python.linting.enabled": true,
+        "esbonio.sphinx.confDir": "",
 }

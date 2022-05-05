@@ -14,7 +14,7 @@ def _gauss_newton(e, nlp, V):
     r"""Gauss-Newton solver`
 
     Parameters
-    ---------
+    ----------
     e : casadi
         cost function
     nlp: dict
@@ -23,7 +23,7 @@ def _gauss_newton(e, nlp, V):
         optimization variables
 
     Returns
-    ---------
+    -------
     solver : casadi
         nlp solver
 
