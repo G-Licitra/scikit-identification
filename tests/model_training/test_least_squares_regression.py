@@ -4,6 +4,7 @@ import os
 import casadi as ca
 import numpy as np
 import pandas as pd
+import pylab as pl
 import pytest
 
 from skmid.integrator import RungeKutta4
@@ -37,6 +38,29 @@ def load_non_linear_model_data():
         settings = json.load(j_object)
 
     return (U, Y, settings)
+
+
+@pytest.fixture
+def load_vehicle_2d_data():
+    """Generate input signal"""
+    CWD = os.getcwd()
+    DATA_DIR = "data"
+    SUB_DATA_DIR = "vehicle_2d"
+
+    # U = pd.read_csv(
+    #     filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "u_data.csv"),
+    #     index_col=0,
+    # )
+
+    data = pl.array(
+        pl.loadtxt(
+            os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "data_2d_vehicle.dat"),
+            delimiter=", ",
+            skiprows=1,
+        )
+    )
+
+    return data
 
 
 class TestLeastSquaresRegression:
@@ -76,82 +100,93 @@ class TestLeastSquaresRegression:
 
         # x_fit = estimator.model_fit_
 
+    def test_fitting_with_mimo_system(self, load_vehicle_2d_data):
 
-# fs, n_steps_per_sample, N = (
-#     settings["fs"],
-#     settings["n_steps_per_sample"],
-#     settings["N"],
-# )
+        data = load_vehicle_2d_data
 
-# x0 = settings["initial_condition"]
-# param_guess = settings["param_guess"]
-# scale = settings["scale"]
-# u_data = data["u_data"].values
-# y_data = data["y_data"].values
+        time_points = data[100:1000:5, 1]
 
-# (state, input, param) = generate_model_parameters(nstate=2, ninput=1, nparam=4)
+        ydata = pd.DataFrame(
+            data=data[100:1000:5, [2, 4, 6, 8]],
+            index=time_points,
+            columns=["x1", "x2", "x3", "x4"],
+        )
 
-# y, dy = state[0], state[1]
-# u = input[0]
+        udata = pd.DataFrame(
+            data=data[100:1000:5, [9, 10]][:-1, :],
+            index=time_points[:-1],
+            columns=["u1", "u2"],
+        )
 
-# M, c, k, k_NL = param[0], param[1], param[2], param[3]
+        pinit = [0.5, 17.06, 12.0, 2.17, 0.1, 0.6]
 
-# rhs = [dy, (u - k_NL * y**3 - k * y - c * dy) / M]
+        # # Define the model
+        (x, u, p) = generate_model_attributes(
+            state_size=4, input_size=2, parameter_size=6
+        )
 
-# model = DynamicModel(
-#     states=state,
-#     inputs=input,
-#     param=param,
-#     model_dynamics=rhs,
-# )
+        rhs = [
+            x[3] * np.cos(x[2] + p[0] * u[0]),
+            x[3] * np.sin(x[2] + p[0] * u[0]),
+            x[3] * u[0] * p[1],
+            p[2] * u[1]
+            - p[3] * u[1] * x[3]
+            - p[4] * x[3] ** 2
+            - p[5]
+            - (x[3] * u[0]) ** 2 * p[1] * p[0],
+        ]
 
-# estimator = LeastSquaresRegression(
-#     model=model, fs=fs, n_steps_per_sample=n_steps_per_sample
-# )
+        model = DynamicModel(
+            state=x,
+            input=u,
+            parameter=p,
+            model_dynamics=rhs,
+        )
 
-# solution = estimator.fit(
-#     U=u_data,
-#     Y=y_data,
-#     initial_condition=x0,
-#     param_guess=param_guess,
-#     param_scale=scale,
-# )
+        # Call Estimator
+        fs = 10
+        estimator = LeastSquaresRegression(model=model, fs=fs)
 
-# assert ca.norm_inf(solution["x"] * scale - settings["param_truth"]) < 1e-8
+        estimator.fit(U=udata, Y=ydata, param_guess=pinit)
 
-# ############ Identifying the simulated system: single shooting strategy ##########
+        param_est = estimator.coef_
+        x_fit = estimator.model_fit_
 
-# # Note, it is in general a good idea to scale your decision variables such
-# # that they are in the order of ~0.1..100
+        pl.figure()
 
-# # X_symbolic = all_samples(x0, u_data, ca.repmat(param * scale, 1, N))
-# # MX(one_sample_acc10_acc10_acc10_acc10(zeros(2x1), [0.0548814, 0.0715189, 0.0602763, ..., 0.075843, 0.00237874, 0.0813575]', repmat(([1e-06, 0.0001, 1, 1]*param), 10000)){0})
+        pl.subplot2grid((4, 2), (0, 0))
+        pl.plot(time_points[1:], x_fit["x1"], label="$X_{fit}$")
+        pl.plot(time_points, ydata["x1"], ".", label="$X_{measure}$")
+        pl.xlabel("$t$")
+        pl.ylabel("$X$", rotation=0)
+        pl.legend(loc="upper right")
 
-# # def fit(self, )
+        pl.subplot2grid((4, 2), (1, 0))
+        pl.plot(time_points[1:], x_fit["x2"], label="$Y_{fit}$")
+        pl.plot(time_points, ydata["x2"], ".", label="$Y_{measure}$")
+        pl.xlabel("$t$")
+        pl.ylabel("$X$", rotation=0)
+        pl.legend(loc="lower left")
 
-# rk4 = RungeKutta4(model=model, fs=fs, n_steps_per_sample=n_steps_per_sample)
+        pl.subplot2grid((4, 2), (2, 0))
+        pl.plot(time_points, psihat, label="$\psi_{sim}$")
+        pl.plot(time_points, ydata[:, 2], label="$\psi_{meas}$")
+        pl.xlabel("$t$")
+        pl.ylabel("$\psi$", rotation=0)
+        pl.legend(loc="lower left")
 
-# N = len(u_data)
-# ############ Simulating the system ##########
-# all_samples = rk4._RungeKutta4__one_sample.mapaccum("all_samples", N)
-# # Function(one_sample_acc10_acc10_acc10_acc10:(i0[2],i1[1x10000],i2[4x10000])->(o0[2x10000]) MXFunction)
-# X_symbolic = all_samples(x0, u_data, ca.repmat(param * scale, 1, N))  #
+        pl.subplot2grid((4, 2), (3, 0))
+        pl.plot(time_points, vhat, label="$v_{sim}$")
+        pl.plot(time_points, ydata[:, 3], label="$v_{meas}$")
+        pl.xlabel("$t$")
+        pl.ylabel("$v$", rotation=0)
+        pl.legend(loc="upper left")
 
-# e = y_data - X_symbolic[0, :].T
-# nlp = {"x": param, "f": 0.5 * ca.dot(e, e)}
+        pl.subplot2grid((4, 2), (0, 1), rowspan=4)
+        pl.plot(xhat, yhat, label="$(X_{sim},\,Y_{sim})$")
+        pl.plot(ydata[:, 0], ydata[:, 1], label="$(X_{meas},\,Y_{meas})$")
+        pl.xlabel("$X$")
+        pl.ylabel("$Y$", rotation=0)
+        pl.legend(loc="upper left")
 
-# solver = _gauss_newton(e, nlp, param)
-
-# sol = solver(x0=settings["param_guess"])
-
-# # print(sol["x"][:4] * scale)
-# # print(settings["param_truth"])
-
-# assert ca.norm_inf(sol["x"] * scale - settings["param_truth"]) < 1e-8
-
-# ############ Identifying the simulated system: multiple shooting strategy ##########
-
-# # print(sol["x"][:4] * scale)
-# # print(param_truth)
-
-# assert ca.norm_inf(sol["x"][:4] * scale - settings["param_truth"]) < 1e-8
+        pl.show()

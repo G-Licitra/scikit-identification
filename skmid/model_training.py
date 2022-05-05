@@ -94,11 +94,11 @@ class LeastSquaresRegression:
         if self.n_steps_per_sample <= 0:
             raise ValueError("n_steps_per_sample must be positive integer.")
 
-    def __construct_state_guess(self, state_guess):
+    def __construct_state_guess(self, state_guess, Y_num):
 
         if state_guess is None and (self.__n_output == self.__n_state):
             # case full state available with no initial state guess
-            state_guess = Y
+            state_guess = Y_num
         elif state_guess is not None:
             # check if state_guess is consistent with model
             if (
@@ -221,7 +221,7 @@ class LeastSquaresRegression:
 
         self.__n_shootings = len(Y_num)  # equal to the time series length
 
-        state_guess = self.__construct_state_guess(state_guess)
+        state_guess = self.__construct_state_guess(state_guess, Y_num)
 
         # __check_param_input(self, Y, U, )
 
