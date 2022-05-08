@@ -217,6 +217,9 @@ class LeastSquaresRegression:
             param_scale if param_scale is not None else [1.0] * self.__n_param
         )
 
+        # put aside initial condition to add later to self.model_fit
+        initial_condition = Y.iloc[0].to_frame().transpose()
+
         (U_num, Y_num) = self.__check_parameter_fit_method_consistency(U, Y)
 
         self.__n_shootings = len(Y_num)  # equal to the time series length
@@ -265,14 +268,22 @@ class LeastSquaresRegression:
         # array of shape (n_features, ) or (n_targets, n_features)
         self.coef_ = np.squeeze(sol["x"][: self.__n_param].full()) * self.__param_scale
 
-        # TODO add initial condition
-        self.model_fit_ = pd.DataFrame(
-            data=sol["x"][self.__n_param :]
-            .full()
-            .reshape((self.__n_shootings, self.__n_state)),
-            columns=self.model.state_name,
-            index=Y.index[:-1],
+        model_fit_ = pd.concat(
+            [
+                initial_condition,
+                pd.DataFrame(
+                    data=sol["x"][self.__n_param :]
+                    .full()
+                    .reshape((self.__n_shootings, self.__n_state)),
+                    columns=self.model.state_name,
+                ),
+            ],
+            axis=0,
         )
+
+        model_fit_.index = Y.index
+
+        self.model_fit_ = model_fit_
 
     def predict(self, U, initial_condition=None, output="output"):
 
