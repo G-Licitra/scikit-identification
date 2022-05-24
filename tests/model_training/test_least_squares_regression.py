@@ -6,11 +6,13 @@ import numpy as np
 import pandas as pd
 import pylab as pl
 import pytest
+from pandas.testing import assert_frame_equal
 
 from skmid.integrator import RungeKutta4
 from skmid.model_training import LeastSquaresRegression
 from skmid.models import DynamicModel
 from skmid.models import generate_model_attributes
+
 
 np.random.seed(0)
 
@@ -47,20 +49,18 @@ def load_vehicle_2d_data():
     DATA_DIR = "data"
     SUB_DATA_DIR = "vehicle_2d"
 
-    # U = pd.read_csv(
-    #     filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "u_data.csv"),
-    #     index_col=0,
-    # )
-
-    data = pl.array(
-        pl.loadtxt(
-            os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "data_2d_vehicle.dat"),
-            delimiter=", ",
-            skiprows=1,
-        )
+    U = pd.read_csv(
+        filepath_or_buffer=os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "u_data.csv"),
+        index_col=0,
     )
 
-    return data
+    # reading the data from the file
+    with open(
+        os.path.join(CWD, DATA_DIR, SUB_DATA_DIR, "settings.json"), mode="r"
+    ) as j_object:
+        settings = json.load(j_object)
+
+    return (U, settings)
 
 
 class TestLeastSquaresRegression:
@@ -101,84 +101,101 @@ class TestLeastSquaresRegression:
         # x_fit = estimator.model_fit_
 
     def test_fitting_with_mimo_system(self, load_vehicle_2d_data):
-        pass
 
-        # data = load_vehicle_2d_data
+        (U, settings) = load_vehicle_2d_data
 
-        # time_points = data[100:1000:5, 1]
+        # # Define the model
+        (x, u, p) = generate_model_attributes(
+            state_size=4, input_size=2, parameter_size=6
+        )
 
-        # ydata = pd.DataFrame(data=data[100:1000:5, [2, 4, 6, 8]],
-        #                      index=time_points,
-        #                      columns=["x1", "x2", "x3", "x4"])
+        rhs = [
+            x[3] * np.cos(x[2] + p[0] * u[0]),
+            x[3] * np.sin(x[2] + p[0] * u[0]),
+            x[3] * u[0] * p[1],
+            p[2] * u[1]
+            - p[3] * u[1] * x[3]
+            - p[4] * x[3] ** 2
+            - p[5]
+            - (x[3] * u[0]) ** 2 * p[1] * p[0],
+        ]
 
-        # udata = pd.DataFrame(data=data[100:1000:5, [9, 10]][:-1, :],
-        #                      index=time_points[:-1],
-        #                      columns=["u1", "u2"])
+        model = DynamicModel(
+            state=x,
+            input=u,
+            parameter=p,
+            model_dynamics=rhs,
+            input_name=["delta", "D"],
+            state_name=["x", "y", "psi", "v"],
+            parameter_name=["C1", "C2", "Cm1", "Cm2", "Cr2", "Cr0"],
+        )
 
-        # pinit = [0.5, 17.06, 12.0, 2.17, 0.1, 0.6]
+        # Call Estimator
+        rk4 = RungeKutta4(model=model, fs=settings["fs"])
+        _ = rk4.simulate(
+            initial_condition=settings["initial_condition"],
+            input=U,
+            parameter=settings["param_truth"],
+        )
+        Y = rk4.state_sim_
 
-        # # # Define the model
-        # (x, u, p) = generate_model_attributes(
-        #     state_size=4, input_size=2, parameter_size=6
-        # )
+        estimator = LeastSquaresRegression(
+            model=model,
+            fs=settings["fs"],
+            n_steps_per_sample=settings["n_steps_per_sample"],
+        )
 
-        # rhs = [x[3] * np.cos(x[2] + p[0] * u[0]),
-        #        x[3] * np.sin(x[2] + p[0] * u[0]),
-        #        x[3] * u[0] * p[1],
-        #        p[2] * u[1] - p[3] * u[1] * x[3] - p[4] * x[3]**2 - p[5] - (x[3] * u[0])**2 * p[1]* p[0]
-        # ]
+        estimator.fit(
+            U=U,
+            Y=Y,
+            param_guess=settings["param_guess"],
+            param_scale=settings["param_scale"],
+        )
 
-        # model = DynamicModel(
-        #     state=x,
-        #     input=u,
-        #     parameter=p,
-        #     model_dynamics=rhs,
-        # )
+        param_est = estimator.coef_
 
-        # # Call Estimator
-        # fs = 10
-        # estimator = LeastSquaresRegression(
-        #     model=model, fs=fs
-        # )
+        assert param_est == pytest.approx(
+            np.array(settings["param_truth"]), rel=1e-3, abs=1e-3
+        )
 
-        # estimator.fit(U=udata, Y=ydata, param_guess=pinit)
+        X_fit = estimator.model_fit_
 
-        # param_est = estimator.coef_
-        # x_fit = estimator.model_fit_
+        # check dimention of the fitted state
+        assert Y.shape == X_fit.shape
 
+        # TODO add baseline comparison image
         # pl.figure()
-
         # pl.subplot2grid((4, 2), (0, 0))
-        # pl.plot(time_points[1:], x_fit['x1'], label = "$X_{fit}$")
-        # pl.plot(time_points, ydata['x1'], '.',label = "$X_{measure}$")
+        # pl.plot(X_fit.index, X_fit['x'], label = "$X_{fit}$")
+        # pl.plot(Y.index, Y['x'], '.',label = "$X_{measure}$")
         # pl.xlabel("$t$")
         # pl.ylabel("$X$", rotation = 0)
         # pl.legend(loc = "upper right")
 
         # pl.subplot2grid((4, 2), (1, 0))
-        # pl.plot(time_points[1:], x_fit['x2'], label = "$Y_{fit}$")
-        # pl.plot(time_points, ydata['x2'], '.',label = "$Y_{measure}$")
+        # pl.plot(X_fit.index, X_fit['y'], label = "$Y_{fit}$")
+        # pl.plot(Y.index, Y['y'], '.',label = "$Y_{measure}$")
         # pl.xlabel("$t$")
         # pl.ylabel("$Y$", rotation = 0)
         # pl.legend(loc = "lower left")
 
         # pl.subplot2grid((4, 2), (2, 0))
-        # pl.plot(time_points[1:], x_fit['x3'], label = "$psi_{fit}$")
-        # pl.plot(time_points, ydata['x3'], '.',label = "$psi_{measure}$")
+        # pl.plot(X_fit.index, X_fit['psi'], label = "$psi_{fit}$")
+        # pl.plot(Y.index, Y['psi'], '.',label = "$psi_{measure}$")
         # pl.xlabel("$t$")
         # pl.ylabel("$\psi$", rotation = 0)
         # pl.legend(loc = "lower left")
 
         # pl.subplot2grid((4, 2), (3, 0))
-        # pl.plot(time_points[1:], x_fit['x4'], label = "$v_{fit}$")
-        # pl.plot(time_points, ydata['x4'], '.',label = "$v_{measure}$")
+        # pl.plot(X_fit.index, X_fit['v'], label = "$v_{fit}$")
+        # pl.plot(Y.index, Y['v'], '.',label = "$v_{measure}$")
         # pl.xlabel("$t$")
         # pl.ylabel("$v$", rotation = 0)
         # pl.legend(loc = "upper left")
 
         # pl.subplot2grid((4, 2), (0, 1), rowspan = 4)
-        # pl.plot(x_fit['x1'], x_fit['x2'], label = "$(X_{sim},\,Y_{sim})$")
-        # pl.plot(ydata['x1'], ydata['x2'], label = "$(X_{meas},\,Y_{meas})$")
+        # pl.plot(X_fit['x'], X_fit['y'], label = "$(X_{sim},\,Y_{sim})$")
+        # pl.plot(Y['x'], Y['y'], label = "$(X_{meas},\,Y_{meas})$")
         # pl.xlabel("$X$")
         # pl.ylabel("$Y$", rotation = 0)
         # pl.legend(loc = "upper left")
