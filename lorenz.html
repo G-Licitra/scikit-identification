@@ -379,7 +379,7 @@ div.rendered_html tbody tr:hover {
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
 <span class="n">current_wd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
 <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">current_wd</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;scikit-identification&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;scikit-identification&quot;</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">skmid.models</span> <span class="kn">import</span> <span class="n">generate_model_parameters</span><span class="p">,</span> <span class="n">DynamicModel</span>
+<span class="kn">from</span> <span class="nn">skmid.models</span> <span class="kn">import</span> <span class="n">generate_model_attributes</span><span class="p">,</span> <span class="n">DynamicModel</span>
 <span class="kn">from</span> <span class="nn">skmid.integrator</span> <span class="kn">import</span> <span class="n">RungeKutta4</span>
 <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">current_wd</span><span class="p">)</span>
 </pre></div>
@@ -406,11 +406,11 @@ div.rendered_html tbody tr:hover {
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="n">generate_model_parameters</span><span class="p">(</span><span class="n">nstate</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">ninput</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">DynamicModel</span><span class="p">(</span><span class="n">states</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="n">u</span><span class="p">,</span> <span class="n">model_dynamics</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">u</span><span class="p">])</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="n">generate_model_attributes</span><span class="p">(</span><span class="n">state_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">DynamicModel</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="nb">input</span><span class="o">=</span><span class="n">u</span><span class="p">,</span> <span class="n">model_dynamics</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">u</span><span class="p">])</span>
 <span class="n">model</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -425,47 +425,46 @@ Input Summary
 states    = [&#39;x1&#39;]
 inputs    = [&#39;u1&#39;]
 parameter = None
-output    = [&#39;y1&#39;]
+output    = [&#39;x1&#39;]
 
 Dimension Summary
 -----------------
  Number of inputs: 2
   Input 0 (&#34;x(t)&#34;): 1x1
   Input 1 (&#34;u(t)&#34;): 1x1
- Number of outputs: 2
+ Number of outputs: 1
   Output 0 (&#34;xdot(t) = f(x(t), u(t))&#34;): 1x1
-  Output 1 (&#34;y(t) = g(x(t))&#34;): 1x1
 </pre></div></div>
 </div>
 <p>Note that output is equal to states when not specified.</p>
 <p>Construct Lorenz system (more info <a class="reference external" href="https://en.wikipedia.org/wiki/Lorenz_system">here</a>).</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span> <span class="o">=</span> <span class="n">generate_model_parameters</span><span class="p">(</span><span class="n">nstate</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">ninput</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">nparam</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span> <span class="o">=</span> <span class="n">generate_model_attributes</span><span class="p">(</span><span class="n">state_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">input_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">parameter_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
 <p>Define sub-variables for better readibility of the equation</p>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">,</span><span class="n">z</span><span class="p">)</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">states</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">states</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
 <span class="p">(</span><span class="n">sigma</span><span class="p">,</span> <span class="n">rho</span><span class="p">,</span> <span class="n">beta</span><span class="p">)</span> <span class="o">=</span> <span class="n">param</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">param</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">param</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
 <span class="n">model_dynamics</span> <span class="o">=</span> <span class="p">[</span><span class="n">sigma</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">x</span><span class="p">),</span> <span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="n">rho</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span> <span class="o">-</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">z</span><span class="p">]</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">DynamicModel</span><span class="p">(</span>
-        <span class="n">states</span><span class="o">=</span><span class="n">states</span><span class="p">,</span>
-        <span class="n">param</span><span class="o">=</span><span class="n">param</span><span class="p">,</span>
+        <span class="n">state</span><span class="o">=</span><span class="n">states</span><span class="p">,</span>
+        <span class="n">parameter</span><span class="o">=</span><span class="n">param</span><span class="p">,</span>
         <span class="n">model_dynamics</span><span class="o">=</span><span class="n">model_dynamics</span><span class="p">,</span>
         <span class="n">state_name</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="s1">&#39;y&#39;</span><span class="p">,</span> <span class="s1">&#39;z&#39;</span><span class="p">],</span> <span class="c1"># ensure the correct order</span>
-        <span class="n">param_name</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">,</span> <span class="s1">&#39;beta&#39;</span><span class="p">])</span>
+        <span class="n">parameter_name</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;sigma&#39;</span><span class="p">,</span> <span class="s1">&#39;rho&#39;</span><span class="p">,</span> <span class="s1">&#39;beta&#39;</span><span class="p">])</span>
 </pre></div>
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span>
@@ -482,31 +481,30 @@ Input Summary
 states    = [&#39;x&#39;, &#39;y&#39;, &#39;z&#39;]
 inputs    = None
 parameter = [&#39;sigma&#39;, &#39;rho&#39;, &#39;beta&#39;]
-output    = [&#39;y1&#39;, &#39;y2&#39;, &#39;y3&#39;]
+output    = [&#39;x&#39;, &#39;y&#39;, &#39;z&#39;]
 
 Dimension Summary
 -----------------
  Number of inputs: 2
   Input 0 (&#34;x(t)&#34;): 3x1
   Input 1 (&#34;p&#34;): 3x1
- Number of outputs: 2
+ Number of outputs: 1
   Output 0 (&#34;xdot(t) = f(x(t), p)&#34;): 3x1
-  Output 1 (&#34;y(t) = g(x(t))&#34;): 3x1
 </pre></div></div>
 </div>
 <p>Evalute function. Lorenz used the following parameter sigma=10, rho=8/3, beta=28.</p>
 <p>The x would represent the initial condition set at x0=0.0, y0=40.0, z0=0.01</p>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="p">(</span><span class="n">Xdot_val</span><span class="p">,</span> <span class="n">Y_val</span><span class="p">)</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">state_num</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span> <span class="n">param_num</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="mi">28</span><span class="p">])</span>
-<span class="n">Xdot_val</span>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">eval_df</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">state_num</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">40.0</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">],</span> <span class="n">parameter_num</span><span class="o">=</span><span class="p">[</span><span class="mi">10</span><span class="p">,</span> <span class="mi">8</span><span class="o">/</span><span class="mi">3</span><span class="p">,</span> <span class="mi">28</span><span class="p">])</span>
+<span class="n">eval_df</span>
 </pre></div>
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[15]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -544,61 +542,14 @@ Dimension Summary
 </table>
 </div></div>
 </div>
-<div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
-</pre></div>
-</div>
-<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">Y_val</span>
-</pre></div>
-</div>
-</div>
-<div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
-</pre></div>
-</div>
-<div class="output_area rendered_html docutils container">
-<div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>y1</th>
-      <th>y2</th>
-      <th>y3</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0.0</td>
-      <td>40.0</td>
-      <td>0.01</td>
-    </tr>
-  </tbody>
-</table>
-</div></div>
-</div>
 <section id="Define-lorenz-system-and-run-forward-simulation-using-RungeKutta4()-integrator">
 <h2>Define lorenz system and run forward simulation using RungeKutta4() integrator<a class="headerlink" href="#Define-lorenz-system-and-run-forward-simulation-using-RungeKutta4()-integrator" title="Permalink to this headline">¶</a></h2>
 <div class="nbinput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[19]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># define states and parameters</span>
-<span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="n">generate_model_parameters</span><span class="p">(</span><span class="n">nstate</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="p">(</span><span class="n">states</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">)</span> <span class="o">=</span> <span class="n">generate_model_attributes</span><span class="p">(</span><span class="n">state_size</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
 <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span> <span class="o">=</span> <span class="n">states</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">states</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">states</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
 
 <span class="n">sigma</span> <span class="o">=</span> <span class="mi">10</span>
@@ -607,18 +558,18 @@ Dimension Summary
 
 <span class="c1"># dx = f(states) &lt;==&gt; rhs = f(x)</span>
 <span class="n">rhs</span> <span class="o">=</span> <span class="p">[</span><span class="n">sigma</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span> <span class="o">-</span> <span class="n">x</span><span class="p">),</span> <span class="n">x</span> <span class="o">*</span> <span class="p">(</span><span class="n">rho</span> <span class="o">-</span> <span class="n">z</span><span class="p">)</span> <span class="o">-</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span> <span class="o">-</span> <span class="n">beta</span> <span class="o">*</span> <span class="n">z</span><span class="p">]</span>
-<span class="n">model</span> <span class="o">=</span> <span class="n">DynamicModel</span><span class="p">(</span><span class="n">states</span><span class="o">=</span><span class="n">states</span><span class="p">,</span> <span class="n">model_dynamics</span><span class="o">=</span><span class="n">rhs</span><span class="p">,</span> <span class="n">state_name</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">])</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">DynamicModel</span><span class="p">(</span><span class="n">state</span><span class="o">=</span><span class="n">states</span><span class="p">,</span> <span class="n">model_dynamics</span><span class="o">=</span><span class="n">rhs</span><span class="p">,</span> <span class="n">state_name</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x&quot;</span><span class="p">,</span> <span class="s2">&quot;y&quot;</span><span class="p">,</span> <span class="s2">&quot;z&quot;</span><span class="p">])</span>
 
 <span class="c1"># invoke integrator</span>
 <span class="n">rk4</span> <span class="o">=</span> <span class="n">RungeKutta4</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">fs</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
-<span class="n">_</span> <span class="o">=</span> <span class="n">rk4</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">x0</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">N_steps</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+<span class="n">_</span> <span class="o">=</span> <span class="n">rk4</span><span class="o">.</span><span class="n">simulate</span><span class="p">(</span><span class="n">initial_condition</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">n_steps</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
 
 <span class="n">df_sim</span> <span class="o">=</span> <span class="n">rk4</span><span class="o">.</span><span class="n">output_sim_</span>
 </pre></div>
 </div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[20]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span><span class="o">.</span><span class="n">print_summary</span><span class="p">()</span>
@@ -635,19 +586,18 @@ Input Summary
 states    = [&#39;x&#39;, &#39;y&#39;, &#39;z&#39;]
 inputs    = None
 parameter = None
-output    = [&#39;y1&#39;, &#39;y2&#39;, &#39;y3&#39;]
+output    = [&#39;x&#39;, &#39;y&#39;, &#39;z&#39;]
 
 Dimension Summary
 -----------------
  Number of inputs: 1
   Input 0 (&#34;x(t)&#34;): 3x1
- Number of outputs: 2
+ Number of outputs: 1
   Output 0 (&#34;xdot(t) = f(x(t))&#34;): 3x1
-  Output 1 (&#34;y(t) = g(x(t))&#34;): 3x1
 </pre></div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">df_sim</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
@@ -655,7 +605,7 @@ Dimension Summary
 </div>
 </div>
 <div class="nboutput nblast docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
 </pre></div>
 </div>
 <div class="output_area rendered_html docutils container">
@@ -677,9 +627,9 @@ Dimension Summary
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>y1</th>
-      <th>y2</th>
-      <th>y3</th>
+      <th>x</th>
+      <th>y</th>
+      <th>z</th>
     </tr>
   </thead>
   <tbody>
@@ -718,12 +668,12 @@ Dimension Summary
 </div></div>
 </div>
 <div class="nbinput docutils container">
-<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
 </pre></div>
 </div>
 <div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">_</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">scatterplot</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">df_sim</span><span class="p">,</span>
-                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;y1&quot;</span><span class="p">,</span>
-                <span class="n">y</span><span class="o">=</span><span class="s2">&quot;y3&quot;</span><span class="p">)</span>
+                <span class="n">x</span><span class="o">=</span><span class="s2">&quot;x&quot;</span><span class="p">,</span>
+                <span class="n">y</span><span class="o">=</span><span class="s2">&quot;z&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -731,7 +681,15 @@ Dimension Summary
 <div class="prompt empty docutils container">
 </div>
 <div class="output_area docutils container">
-<img alt="_images/lorenz_17_0.png" src="_images/lorenz_17_0.png" />
+<img alt="_images/lorenz_16_0.png" src="_images/lorenz_16_0.png" />
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span>
+</pre></div>
 </div>
 </div>
 </section>
