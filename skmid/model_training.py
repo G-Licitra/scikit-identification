@@ -12,7 +12,6 @@ from skmid.models import DynamicModel
 
 def _gauss_newton(e, nlp, V):
     r"""Gauss-Newton solver`
-
     Parameters
     ----------
     e : casadi
@@ -21,12 +20,10 @@ def _gauss_newton(e, nlp, V):
         Steps forward within one integration step
     V : casadi
         optimization variables
-
     Returns
     -------
     solver : casadi
         nlp solver
-
     """
 
     # Use just-in-time compilation to speed up the evaluation

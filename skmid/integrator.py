@@ -14,7 +14,6 @@ from skmid.models import generate_model_attributes
 
 class RungeKutta4:
     r"""Create Explicit Runge Kutta order 4 integrator`
-
     Parameters
     ----------
     ode : casadi.Function
@@ -31,14 +30,12 @@ class RungeKutta4:
         frequency at which the system is sampled
     N_steps: int
         number of integration steps
-
     Returns
     -------
     one_sample : casadi.Function
         One step forward model integrator
     all_sample : casadi.Function
         N steps forward model integrator
-
     """
 
     def __init__(
@@ -286,7 +283,6 @@ class RungeKutta4:
                 print(
                     f"""INFO:The input index has a different fs than specified in the object.
                                   The input index has been modified by using fs={self.fs} Hz.
-
                                 """
                 )
 
