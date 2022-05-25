@@ -27,7 +27,7 @@ Example Notebooks scikit-identification Functions
    integrator.ipynb
    lorenz.ipynb
    models.ipynb
-   models_fit_predict.ipynb
+   model_fit_predict.ipynb
 
 Tests
 ---------
