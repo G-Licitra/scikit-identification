@@ -1,4 +1,4 @@
-#%%
+# %%
 import warnings
 from typing import List
 from typing import Union
@@ -14,9 +14,8 @@ from skmid.models import generate_model_attributes
 
 class RungeKutta4:
     r"""Create Explicit Runge Kutta order 4 integrator`
-
     Parameters
-    ---------
+    ----------
     ode : casadi.Function
         Function which define the model via ODE, formally,
         f: (x, u, theta) -> rhs.
@@ -31,14 +30,12 @@ class RungeKutta4:
         frequency at which the system is sampled
     N_steps: int
         number of integration steps
-
     Returns
-    ---------
+    -------
     one_sample : casadi.Function
         One step forward model integrator
     all_sample : casadi.Function
         N steps forward model integrator
-
     """
 
     def __init__(
@@ -269,7 +266,8 @@ class RungeKutta4:
         if isinstance(input, np.ndarray):
             # convert input to pandas dataframe
             input = pd.DataFrame(
-                data=input, index=self.time_[:-1], columns=self.model.input_name
+                data=input, index=self.time_[:-1],
+                columns=self.model.input_name
             )
 
         if isinstance(input, pd.DataFrame) or isinstance(
@@ -320,7 +318,7 @@ if __name__ == "__main__":  # when run for testing only
 
     x0 = [1, -1]  # Initial Condition x0 = [0;0]; [nx = 2]
 
-    #%%----------------------------------------------------------------
+    # %%----------------------------------------------------------------
 
     (x, u, param) = generate_model_attributes(
         state_size=2, input_size=2, parameter_size=2

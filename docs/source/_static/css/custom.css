@@ -1,0 +1,100 @@
+body {
+    --darkgrey: grey;
+    --white: #ffffff;
+    --vivid-sky-blue: #1ac8edff;
+    --columbia-blue: #aed4e6ff;
+    --opera-mauve: #af7595ff;
+    --pansy-purple: #8c2155ff;
+    --caput-mortuum: #5c1a1bff;
+    --mauve: #dabfffff;
+    --medium-purple: #907ad6ff;
+    --purple-navy: #4f518cff;
+    --space-cadet: #2c2a4aff;
+    --sky-blue: #7fdeffff;
+}
+
+
+h1 {
+    color: var(--caput-mortuum);
+}
+
+h1 code {
+    color: var(--caput-mortuum);
+}
+
+h2 {
+    color: var(--caput-mortuum);
+}
+
+#navbar {
+    background-color: var(--columbia-blue);
+    padding: 5px;
+}
+
+li {
+    color: var(--vivid-sky-blue);
+}
+
+li.toctree-l1 a.reference.internal code {
+    color: var(--vivid-sky-blue);
+}
+
+li .reference.internal {
+    color: var(--vivid-sky-blue);
+}
+
+.nav.navbar-nav li a {
+    color: var(--caput-mortuum);
+}
+
+.nav.navbar-nav li a:hover {
+    color: var(--opera-mauve);
+}
+
+#dLabelGlobalToc {
+    color: var(--white);
+}
+
+#dLabelLocalToc {
+    color: var(--white);
+}
+
+.genindex-jumpbox a {
+    color: var(--vivid-sky-blue);
+}
+
+table td li a {
+    color: var(--vivid-sky-blue);
+}
+
+.footer a {
+    color: var(--vivid-sky-blue);
+}
+
+.dropdown-menu>li>a:hover, .dropdown-menu>li>a:focus {
+    color: var(--vivid-sky-blue);
+    text-decoration: none;
+    background-color: var(--yellow);
+}
+
+code {
+    color: var(--vivid-sky-blue);
+}
+
+a {
+    color: var(--vivid-sky-blue);
+}
+
+a.headerlink:hover {
+    color: var(--caput-mortuum);
+}
+
+.navbar-default .navbar-brand {
+    color: var(--white);
+    /* background-color: transparent; */
+}
+
+.navbar-default .navbar-brand:hover, .navbar-default .navbar-brand:focus {
+    color: var(--white);
+    background-color: transparent;
+    }

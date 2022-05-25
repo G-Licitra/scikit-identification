@@ -1,6 +1,7 @@
 from typing import Any
 from typing import List
 from typing import Union
+from typing import List
 
 import casadi as ca
 import pandas as pd
@@ -122,7 +123,7 @@ class DynamicModel:
 
 
     Examples
-    ---------
+    --------
     Construct simple dynamic model with one differential state, one input.
 
     >>> (x, u, _) = generate_model_attributes(nx=1, nu=1)
@@ -274,7 +275,7 @@ class DynamicModel:
         print("\nDimension Summary\n-----------------")
         self.model_function.print_dimensions()
 
-    def evaluate(self, *, state_num=list[float], input_num=None, parameter_num=None):
+    def evaluate(self, *, state_num=List[float], input_num=None, parameter_num=None):
         """Numerical evaludation of the model."""
 
         error_str = """Input mishmatch. Please check that the inputs are consistent with class attributes."""
@@ -332,7 +333,7 @@ class DynamicModel:
             else state_name
         )
 
-        if self.__nu != None:
+        if self.__nu is not None:
             self.input_name = (
                 ["u" + str(i + 1) for i in range(self.__nu)]
                 if input_name is None
@@ -341,7 +342,7 @@ class DynamicModel:
         else:
             self.input_name = None
 
-        if self.__np != None:
+        if self.__np is not None:
             self.param_name = (
                 ["p" + str(i + 1) for i in range(self.__np)]
                 if param_name is None
