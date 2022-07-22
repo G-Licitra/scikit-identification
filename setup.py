@@ -1,35 +1,56 @@
-#! /usr/bin/env python
-#
-# Copyright (C) 2022 Giovanni Licitra
-import os
+import codecs
+import os.path
+
+from setuptools import find_packages
+from setuptools import setup
 
 
-def read(fname):
-    return open(os.path.join(os.path.dirname(__file__), fname)).read()
+def read(rel_path):
+    here = os.path.abspath(os.path.dirname("__file__"))
+    with codecs.open(os.path.join(here, rel_path), "r") as fp:
+        return fp.read()
 
 
-LONG_DESCRIPTION = """Pingouin is a statistical Python package based on Pandas."""
+def get_version(rel_path):
+    for line in read(rel_path).splitlines():
+        if line.startswith("__version__"):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
-DISTNAME = "scikit-identification"
+LONG_DESCRIPTION = """Scikit-identification is a package based on CASADI and scikit-learn."""
+
+DISTNAME = "skidentification"
 DESCRIPTION = "skmid: A set of python modules for dynamic model identification"
 
 MAINTAINER = "Giovanni Licitra"
 MAINTAINER_EMAIL = "gianni.licitra7@gmail.com"
 URL = "https://github.com/G-Licitra/scikit-identification"
 DOWNLOAD_URL = "https://github.com/G-Licitra/scikit-identification"
-VERSION = "0.1.0"
 LICENSE = "Apache License 2.0"
-# PACKAGE_DATA = {'skmid.data.icons': ['*.svg']}
 
-INSTALL_REQUIRES = [
+install_requires = [
     "numpy>=1.19",
     "scipy>=1.7",
-    "pandas>=1.4" "matplotlib>=3.5.1",
-    "scikit-identification",
+    "pandas>=1.4",
+    "matplotlib>=3.5.1",
+    # "scikit-identification",
+    # "skidentification",
     "seaborn>=0.11",
     "casadi>=3.5",
 ]
 
+tests_require = [
+    "pytest>=6.2.0",
+    "pytest-cov>=2.11.0",
+    "pytest-mock>=3.5.0",
+    "pytest-mpl>=0.12",
+]
+
+setup_requires: list = []
+
+packages = find_packages()
 
 CLASSIFIERS = [
     "Intended Audience :: Science/Research",
@@ -42,30 +63,21 @@ CLASSIFIERS = [
     "Operating System :: MacOS",
 ]
 
-try:
-    from setuptools import setup
-
-    _has_setuptools = True
-except ImportError:
-    from distutils.core import setup
-
-if __name__ == "__main__":
-
-    setup(
-        name=DISTNAME,
-        author=MAINTAINER,
-        author_email=MAINTAINER_EMAIL,
-        maintainer=MAINTAINER,
-        maintainer_email=MAINTAINER_EMAIL,
-        description=DESCRIPTION,
-        long_description=LONG_DESCRIPTION,
-        license=LICENSE,
-        url=URL,
-        version=VERSION,
-        download_url=DOWNLOAD_URL,
-        install_requires=INSTALL_REQUIRES,
-        include_package_data=True,
-        #          packages=PACKAGES,
-        #          package_data=PACKAGE_DATA,
-        classifiers=CLASSIFIERS,
-    )
+setup(
+    name=DISTNAME,
+    version=get_version("skmid/__init__.py"),
+    description=DESCRIPTION,
+    url=URL,
+    download_url=DOWNLOAD_URL,
+    author=MAINTAINER,
+    author_email=MAINTAINER_EMAIL,
+    maintainer=MAINTAINER,
+    maintainer_email=MAINTAINER_EMAIL,
+    license=LICENSE,
+    packages=find_packages(),
+    include_package_data=True,
+    install_requires=install_requires,
+    tests_require=tests_require,
+    setup_requires=setup_requires,
+    classifiers=CLASSIFIERS,
+)
